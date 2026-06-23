@@ -209,22 +209,23 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser }) {
           ))}
         </div>
 
-        {/* Check-in button */}
-        <div className="flex gap-3">
+        {/* Check-in + Leave buttons */}
+        <div className="grid grid-cols-2 gap-3">
           <button
             onClick={() => setShowModal(true)}
-            className="flex-1 bg-blue-500 hover:bg-blue-600 active:scale-95 text-white rounded-2xl py-6 shadow-md flex flex-col items-center gap-2 transition-all"
+            className="bg-blue-500 hover:bg-blue-600 active:scale-95 text-white rounded-2xl py-6 shadow-md flex flex-col items-center gap-2 transition-all"
           >
             <Camera size={36} />
-            <span className="text-lg font-bold">ĐIỂM DANH</span>
+            <span className="text-base font-bold">ĐIỂM DANH</span>
             <span className="text-blue-100 text-xs">GPS + Khuôn mặt</span>
           </button>
           <button
             onClick={() => setShowLeave(true)}
-            className="bg-orange-500 hover:bg-orange-600 active:scale-95 text-white rounded-2xl px-5 shadow-md flex flex-col items-center justify-center gap-2 transition-all"
+            className="bg-indigo-500 hover:bg-indigo-600 active:scale-95 text-white rounded-2xl py-6 shadow-md flex flex-col items-center gap-2 transition-all"
           >
-            <span className="text-2xl">🏥</span>
-            <span className="text-xs font-bold text-center leading-tight">Xin<br/>nghỉ</span>
+            <BookOpen size={36} />
+            <span className="text-base font-bold">XIN NGHỈ</span>
+            <span className="text-indigo-100 text-xs">Nộp giấy tờ</span>
           </button>
         </div>
 

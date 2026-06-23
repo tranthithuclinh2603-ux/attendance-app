@@ -80,25 +80,14 @@ export default function RegisterPage() {
         {/* Role selector */}
         <div className="mb-5">
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Vai trò</label>
-          <div className="grid grid-cols-2 gap-2">
-            {[
-              { value: 'student', label: '🎓 Sinh viên' },
-              { value: 'teacher', label: '👩‍🏫 Giảng viên' },
-            ].map(({ value, label }) => (
-              <button
-                key={value}
-                type="button"
-                onClick={() => { setRole(value); setErrors({}); setApiError(''); }}
-                className={`py-2.5 rounded-lg text-sm font-medium border-2 transition-colors ${
-                  role === value
-                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
-                    : 'border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:border-gray-300'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+          <select
+            value={role}
+            onChange={(e) => { setRole(e.target.value); setErrors({}); setApiError(''); }}
+            className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+          >
+            <option value="student">🎓 Sinh viên</option>
+            <option value="teacher">👩‍🏫 Giảng viên</option>
+          </select>
         </div>
 
         {success && (
