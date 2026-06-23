@@ -60,23 +60,6 @@ export default function RegisterPage() {
     }
   };
 
-  const Field = ({ name, label, type = 'text', placeholder }) => (
-    <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
-      <input
-        type={type}
-        name={name}
-        value={form[name]}
-        onChange={handleChange}
-        placeholder={placeholder}
-        className={`w-full border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-          errors[name] ? 'border-red-400' : 'border-gray-300'
-        }`}
-      />
-      {errors[name] && <p className="text-red-500 text-xs mt-1">{errors[name]}</p>}
-    </div>
-  );
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-lg w-full max-w-md p-8">
@@ -100,11 +83,48 @@ export default function RegisterPage() {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <Field name="name" label="Họ và tên" placeholder="Nguyễn Thị A" />
-          <Field name="email" label="Email" type="email" placeholder="example@email.com" />
+          {/* Họ tên */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Họ và tên</label>
+            <input
+              type="text"
+              name="name"
+              value={form.name}
+              onChange={handleChange}
+              placeholder="Nguyễn Thị A"
+              className={`w-full border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.name ? 'border-red-400' : 'border-gray-300'}`}
+            />
+            {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
+          </div>
 
+          {/* Email */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+            <input
+              type="email"
+              name="email"
+              value={form.email}
+              onChange={handleChange}
+              placeholder="example@email.com"
+              className={`w-full border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.email ? 'border-red-400' : 'border-gray-300'}`}
+            />
+            {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
+          </div>
+
+          {/* MSSV + Lớp */}
           <div className="grid grid-cols-2 gap-3">
-            <Field name="mssv" label="MSSV (7 số)" placeholder="2404001" />
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">MSSV (7 số)</label>
+              <input
+                type="text"
+                name="mssv"
+                value={form.mssv}
+                onChange={handleChange}
+                placeholder="2404001"
+                className={`w-full border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.mssv ? 'border-red-400' : 'border-gray-300'}`}
+              />
+              {errors.mssv && <p className="text-red-500 text-xs mt-1">{errors.mssv}</p>}
+            </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Lớp</label>
               <select
@@ -118,6 +138,7 @@ export default function RegisterPage() {
             </div>
           </div>
 
+          {/* Mật khẩu */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Mật khẩu</label>
             <div className="relative">
@@ -136,6 +157,7 @@ export default function RegisterPage() {
             {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password}</p>}
           </div>
 
+          {/* Xác nhận mật khẩu */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Xác nhận mật khẩu</label>
             <input
