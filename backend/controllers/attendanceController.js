@@ -301,4 +301,33 @@ const manualCheckin = async (req, res) => {
   }
 };
 
-module.exports = { checkin, getHistory, getClassAttendance, updateAttendance, deleteAttendance, getLeaderboard, getAbsenceAlerts, manualCheckin };
+const qrCheckin = async (req, res) => {
+  try {
+    const { classId, date } = req.body;
+    const { uid, name } = req.user;
+    if (!classId) return res.status(400).json({ success: false, message: 'classId là bắt buộc' });
+
+    const dateKey = date || new Date().toISOString().split('T')[0];
+    const attendanceKey = `${classId}_${dateKey}`;
+
+    const existing = await db.ref(`attendance/${attendanceKey}/${uid}`).once('value');
+    if (existing.exists() && existing.val().status !== 'absent') {
+      return res.status(409).json({ success: false, message: 'Bạn đã điểm danh rồi' });
+    }
+
+    const now = new Date();
+    const status = getStatus(now.toISOString());
+    const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+
+    await db.ref(`attendance/${attendanceKey}/${uid}`).set({
+      timestamp: now.toISOString(), status, name, method: 'qr',
+    });
+
+    res.json({ success: true, status, message: `Điểm danh QR thành công lúc ${timeStr} — ${status === 'present' ? 'Có mặt' : 'Muộn'}` });
+  } catch (err) {
+    console.error('QR checkin error:', err);
+    res.status(500).json({ success: false, message: 'Lỗi server' });
+  }
+};
+
+module.exports = { checkin, getHistory, getClassAttendance, updateAttendance, deleteAttendance, getLeaderboard, getAbsenceAlerts, manualCheckin, qrCheckin };

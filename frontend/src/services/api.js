@@ -32,6 +32,7 @@ export const authAPI = {
   resetPassword: (data) => API.post('/auth/reset-password', data),
   updateProfile: (data) => API.put('/auth/profile', data),
   updateAvatar: (data) => API.put('/auth/avatar', data),
+  bulkRegister: (data) => API.post('/auth/bulk-register', data),
 };
 
 // Attendance
@@ -46,6 +47,7 @@ export const attendanceAPI = {
   getLeaderboard: (classId) => API.get(`/attendance/leaderboard/${classId}`),
   getAbsenceAlerts: (classId) => API.get(`/attendance/alerts/${classId}`),
   manualCheckin: (data) => API.post('/attendance/manual', data),
+  qrCheckin: (data) => API.post('/attendance/qr-checkin', data),
 };
 
 export default API;

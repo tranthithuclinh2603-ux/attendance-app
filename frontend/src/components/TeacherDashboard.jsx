@@ -1,11 +1,12 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { RefreshCw, Download, Users, CheckCircle, Clock, XCircle, AlertTriangle, Search, BarChart2, FileText, PlusCircle } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { RefreshCw, Download, Users, CheckCircle, Clock, XCircle, AlertTriangle, Search, BarChart2, FileText, PlusCircle, QrCode, Upload } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { attendanceAPI } from '../services/api';
+import { attendanceAPI, authAPI } from '../services/api';
 import AttendanceTable from './AttendanceTable';
 import NavBar from './NavBar';
+import QRModal from './QRModal';
 
 const CLASSES = ['CĐTMDT28A','CĐTMDT28B','CĐTMDT28C','CĐTMDT28D','CĐTMDT28E','CĐTMDT28F','CĐTMDT28G','CĐTMDT28H','CĐTMDT28I'];
 
@@ -143,6 +144,11 @@ export default function TeacherDashboard({ user, onLogout, onUpdateUser }) {
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState('list');
   const [showManual, setShowManual] = useState(false);
+  const [showQR, setShowQR] = useState(false);
+  const [bulkData, setBulkData] = useState([]);
+  const [bulkResult, setBulkResult] = useState(null);
+  const [bulkLoading, setBulkLoading] = useState(false);
+  const fileInputRef = useRef();
 
   const stats = {
     present: data.filter((d) => d.status === 'present').length,
@@ -192,6 +198,40 @@ export default function TeacherDashboard({ user, onLogout, onUpdateUser }) {
   };
 
   const pct = (n) => (stats.total ? Math.round((n / stats.total) * 100) : 0);
+
+  const handleBulkFile = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const wb = XLSX.read(ev.target.result, { type: 'binary' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws);
+      const students = rows.map((r) => ({
+        name: r['Họ tên'] || r['Ho ten'] || r['name'] || '',
+        email: r['Email'] || r['email'] || '',
+        mssv: String(r['MSSV'] || r['mssv'] || ''),
+        classId: r['Lớp'] || r['Lop'] || r['classId'] || selectedClass,
+        password: String(r['Mật khẩu'] || r['Mat khau'] || r['password'] || '123456'),
+      }));
+      setBulkData(students);
+      setBulkResult(null);
+    };
+    reader.readAsBinaryString(file);
+  };
+
+  const handleBulkUpload = async () => {
+    if (!bulkData.length) return;
+    setBulkLoading(true);
+    try {
+      const res = await authAPI.bulkRegister({ students: bulkData });
+      setBulkResult(res.data);
+    } catch (err) {
+      setBulkResult({ success: false, message: err.response?.data?.message || 'Lỗi upload' });
+    } finally {
+      setBulkLoading(false);
+    }
+  };
 
   const exportPDF = () => {
     const doc = new jsPDF();
@@ -266,15 +306,19 @@ export default function TeacherDashboard({ user, onLogout, onUpdateUser }) {
               onClick={exportExcel}
               className="flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
             >
-              <Download size={16} />
-              Excel
+              <Download size={16} /> Excel
             </button>
             <button
               onClick={exportPDF}
               className="flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
             >
-              <FileText size={16} />
-              PDF
+              <FileText size={16} /> PDF
+            </button>
+            <button
+              onClick={() => setShowQR(true)}
+              className="flex items-center gap-2 bg-purple-500 hover:bg-purple-600 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
+            >
+              <QrCode size={16} /> QR
             </button>
           </div>
         </div>
@@ -305,9 +349,10 @@ export default function TeacherDashboard({ user, onLogout, onUpdateUser }) {
         <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
           <div className="flex border-b">
             {[
-              { key: 'list', label: '📋 Danh sách điểm danh' },
-              { key: 'alerts', label: '⚠️ Cảnh báo vắng' },
+              { key: 'list', label: '📋 Danh sách' },
+              { key: 'alerts', label: '⚠️ Cảnh báo' },
               { key: 'stats', label: '📊 Thống kê' },
+              { key: 'bulk', label: '📤 Bulk Upload' },
             ].map(({ key, label }) => (
               <button
                 key={key}
@@ -364,6 +409,119 @@ export default function TeacherDashboard({ user, onLogout, onUpdateUser }) {
               </div>
               <AlertsPanel classId={selectedClass} />
             </>
+          )}
+
+          {/* Bulk Upload tab */}
+          {activeTab === 'bulk' && (
+            <div className="p-5 space-y-4">
+              <h4 className="font-semibold text-gray-800 dark:text-white flex items-center gap-2">
+                <Upload size={18} className="text-blue-500" /> Tạo tài khoản hàng loạt từ Excel
+              </h4>
+
+              {/* Template download */}
+              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 text-sm">
+                <p className="font-medium text-blue-700 dark:text-blue-400 mb-2">📋 File Excel cần có các cột:</p>
+                <div className="flex flex-wrap gap-2">
+                  {['Họ tên', 'Email', 'MSSV', 'Lớp', 'Mật khẩu'].map((c) => (
+                    <span key={c} className="bg-blue-100 dark:bg-blue-800 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded text-xs font-mono">{c}</span>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-500 mt-2">* Mật khẩu mặc định: 123456 nếu để trống</p>
+              </div>
+
+              {/* Upload button */}
+              <div className="flex gap-3">
+                <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleBulkFile} />
+                <button
+                  onClick={() => { fileInputRef.current?.click(); setBulkData([]); setBulkResult(null); }}
+                  className="flex items-center gap-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 dark:text-white px-4 py-2.5 rounded-xl text-sm font-medium transition-colors"
+                >
+                  <Upload size={16} /> Chọn file Excel
+                </button>
+                {bulkData.length > 0 && !bulkResult && (
+                  <button
+                    onClick={handleBulkUpload}
+                    disabled={bulkLoading}
+                    className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2.5 rounded-xl text-sm font-medium transition-colors disabled:opacity-50"
+                  >
+                    {bulkLoading ? 'Đang tạo...' : `Tạo ${bulkData.length} tài khoản`}
+                  </button>
+                )}
+              </div>
+
+              {/* Preview table */}
+              {bulkData.length > 0 && !bulkResult && (
+                <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
+                  <table className="w-full text-xs">
+                    <thead className="bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400">
+                      <tr>
+                        {['#', 'Họ tên', 'Email', 'MSSV', 'Lớp'].map((h) => (
+                          <th key={h} className="px-3 py-2 text-left">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                      {bulkData.slice(0, 10).map((s, i) => (
+                        <tr key={i} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                          <td className="px-3 py-2 text-gray-400">{i + 1}</td>
+                          <td className="px-3 py-2 dark:text-white">{s.name}</td>
+                          <td className="px-3 py-2 text-gray-500 dark:text-gray-400">{s.email}</td>
+                          <td className="px-3 py-2 dark:text-white">{s.mssv}</td>
+                          <td className="px-3 py-2 dark:text-white">{s.classId}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {bulkData.length > 10 && (
+                    <p className="text-center text-xs text-gray-400 py-2">... và {bulkData.length - 10} sinh viên khác</p>
+                  )}
+                </div>
+              )}
+
+              {/* Results */}
+              {bulkResult && (
+                <div className="space-y-3">
+                  <div className={`rounded-xl p-4 ${bulkResult.success ? 'bg-green-50 dark:bg-green-900/20' : 'bg-red-50 dark:bg-red-900/20'}`}>
+                    <p className={`font-semibold text-sm ${bulkResult.success ? 'text-green-700 dark:text-green-400' : 'text-red-600'}`}>
+                      {bulkResult.success ? '✅' : '❌'} {bulkResult.message}
+                    </p>
+                  </div>
+                  {bulkResult.results && (
+                    <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
+                      <table className="w-full text-xs">
+                        <thead className="bg-gray-50 dark:bg-gray-700 text-gray-500">
+                          <tr>
+                            <th className="px-3 py-2 text-left">Tên</th>
+                            <th className="px-3 py-2 text-left">Email</th>
+                            <th className="px-3 py-2 text-left">Kết quả</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                          {bulkResult.results.map((r, i) => (
+                            <tr key={i}>
+                              <td className="px-3 py-2 dark:text-white">{r.name}</td>
+                              <td className="px-3 py-2 text-gray-500">{r.email}</td>
+                              <td className="px-3 py-2">
+                                <span className={`px-2 py-0.5 rounded-full font-medium ${
+                                  r.status === 'success' ? 'bg-green-100 text-green-700' :
+                                  r.status === 'skip' ? 'bg-yellow-100 text-yellow-700' :
+                                  'bg-red-100 text-red-700'
+                                }`}>
+                                  {r.status === 'success' ? '✅ Thành công' : r.status === 'skip' ? '⚠️ Đã tồn tại' : `❌ ${r.message}`}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                  <button onClick={() => { setBulkData([]); setBulkResult(null); }} className="text-blue-500 text-sm hover:underline">
+                    Upload file mới
+                  </button>
+                </div>
+              )}
+            </div>
           )}
 
           {/* Stats tab */}
@@ -424,6 +582,14 @@ export default function TeacherDashboard({ user, onLogout, onUpdateUser }) {
           )}
         </div>
       </div>
+
+      {showQR && (
+        <QRModal
+          classId={selectedClass}
+          date={selectedDate}
+          onClose={() => setShowQR(false)}
+        />
+      )}
 
       {showManual && (
         <ManualModal

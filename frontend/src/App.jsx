@@ -5,6 +5,7 @@ import RegisterPage from './pages/RegisterPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import StudentPage from './pages/StudentPage';
 import TeacherPage from './pages/TeacherPage';
+import QRCheckinPage from './pages/QRCheckinPage';
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -53,6 +54,7 @@ export default function App() {
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/student" element={<StudentPage user={user} onLogout={handleLogout} onUpdateUser={handleUpdateUser} />} />
         <Route path="/teacher" element={<TeacherPage user={user} onLogout={handleLogout} onUpdateUser={handleUpdateUser} />} />
+        <Route path="/qr" element={<QRCheckinPage />} />
         <Route
           path="/"
           element={user ? <Navigate to={user.role === 'teacher' ? '/teacher' : '/student'} /> : <Navigate to="/login" />}

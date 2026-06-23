@@ -16,7 +16,8 @@
     "react-scripts": "5.0.1",
     "xlsx": "^0.18.5",
     "jspdf": "^2.5.1",
-    "jspdf-autotable": "^3.8.2"
+    "jspdf-autotable": "^3.8.2",
+    "qrcode": "^1.5.3"
   },
   "scripts": {
     "start": "react-scripts start",

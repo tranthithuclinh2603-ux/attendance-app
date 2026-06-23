@@ -160,4 +160,43 @@ const updateAvatar = async (req, res) => {
   }
 };
 
-module.exports = { register, login, resetPassword, updateProfile, updateAvatar };
+const bulkRegister = async (req, res) => {
+  try {
+    const { students } = req.body;
+    if (!Array.isArray(students) || !students.length) {
+      return res.status(400).json({ success: false, message: 'Danh sách sinh viên trống' });
+    }
+
+    const results = [];
+    for (const s of students) {
+      if (!s.name || !s.email || !s.mssv || !s.classId) {
+        results.push({ email: s.email || '?', status: 'error', message: 'Thiếu thông tin' });
+        continue;
+      }
+      try {
+        const snap = await db.ref('users').orderByChild('email').equalTo(s.email).once('value');
+        if (snap.exists()) {
+          results.push({ email: s.email, name: s.name, status: 'skip', message: 'Email đã tồn tại' });
+          continue;
+        }
+        const passwordHash = await bcrypt.hash(s.password || '123456', 10);
+        const uid = `uid_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+        await db.ref(`users/${uid}`).set({
+          name: s.name, email: s.email, mssv: s.mssv, classId: s.classId,
+          role: 'student', passwordHash, createdAt: new Date().toISOString(),
+        });
+        results.push({ email: s.email, name: s.name, status: 'success' });
+      } catch {
+        results.push({ email: s.email, name: s.name, status: 'error', message: 'Lỗi tạo tài khoản' });
+      }
+    }
+
+    const created = results.filter(r => r.status === 'success').length;
+    res.json({ success: true, message: `Tạo thành công ${created}/${students.length} tài khoản`, results });
+  } catch (error) {
+    console.error('Bulk register error:', error);
+    res.status(500).json({ success: false, message: 'Lỗi server' });
+  }
+};
+
+module.exports = { register, login, resetPassword, updateProfile, updateAvatar, bulkRegister };

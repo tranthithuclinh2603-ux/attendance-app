@@ -1,6 +1,7 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react';
-import { Camera, RotateCcw, Check, X, Loader, MapPin, AlertTriangle } from 'lucide-react';
+import { Camera, RotateCcw, Check, X, Loader, MapPin, AlertTriangle, Map } from 'lucide-react';
 import { attendanceAPI } from '../services/api';
+import GeofenceMap from './GeofenceMap';
 
 // ===== CẤU HÌNH VỊ TRÍ TRƯỜNG =====
 // Thay tọa độ này bằng tọa độ thực của trường bạn
@@ -45,6 +46,7 @@ export default function AttendanceModal({ classId, onClose, onSuccess }) {
   const [capturedImage, setCapturedImage] = useState(null);
   const [cameraError, setCameraError] = useState('');
   const [result, setResult] = useState(null);
+  const [showMap, setShowMap] = useState(false);
 
   // ── GPS ──────────────────────────────────────────
   const getGPS = useCallback(() => {
@@ -174,13 +176,20 @@ export default function AttendanceModal({ classId, onClose, onSuccess }) {
               <p>🎯 Độ chính xác GPS: ±{gpsData.accuracy}m</p>
             </div>
           </div>
-          <button
-            onClick={() => setStep('camera')}
-            className="w-full bg-blue-500 hover:bg-blue-600 text-white py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors"
-          >
-            <Camera size={20} />
-            Tiếp tục chụp ảnh
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowMap(true)}
+              className="flex-none bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 px-4 rounded-xl font-medium flex items-center gap-2 transition-colors"
+            >
+              <Map size={18} /> Bản đồ
+            </button>
+            <button
+              onClick={() => setStep('camera')}
+              className="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors"
+            >
+              <Camera size={20} /> Tiếp tục chụp ảnh
+            </button>
+          </div>
         </div>
       )}
 
@@ -200,13 +209,20 @@ export default function AttendanceModal({ classId, onClose, onSuccess }) {
               Bạn cần có mặt tại trường để điểm danh.
             </p>
           </div>
-          <button
-            onClick={getGPS}
-            className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors"
-          >
-            <RotateCcw size={18} />
-            Thử lại
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowMap(true)}
+              className="flex-none bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 px-4 rounded-xl font-medium flex items-center gap-2 transition-colors"
+            >
+              <Map size={18} /> Bản đồ
+            </button>
+            <button
+              onClick={getGPS}
+              className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors"
+            >
+              <RotateCcw size={18} /> Thử lại
+            </button>
+          </div>
         </div>
       )}
 
@@ -334,6 +350,7 @@ export default function AttendanceModal({ classId, onClose, onSuccess }) {
         </div>
       </div>
       <canvas ref={canvasRef} className="hidden" />
+      {showMap && <GeofenceMap gpsData={gpsData} onClose={() => setShowMap(false)} />}
     </div>
   );
 }
