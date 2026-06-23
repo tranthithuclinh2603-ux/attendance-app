@@ -2,6 +2,7 @@ import axios from 'axios';
 
 const API = axios.create({
   baseURL: 'http://localhost:5000/api',
+  baseURL: 'https://attendance-app-production-3fac.up.railway.app/api',
   timeout: 10000,
 });
 
