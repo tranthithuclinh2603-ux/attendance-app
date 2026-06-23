@@ -61,11 +61,11 @@ export default function RegisterPage() {
     document.documentElement.classList.remove('dark');
   }, []);
 
-  // Cascading class selection
-  const [selKhoa, setSelKhoa] = useState('');
-  const [selNganh, setSelNganh] = useState('');
-  const [selKhoa2, setSelKhoa2] = useState(''); // khóa học (K28...)
-  const [selLop, setSelLop] = useState('');
+  // Cascading class selection — default to first option each
+  const [selKhoa, setSelKhoa] = useState(SCHOOL[0].khoa);
+  const [selNganh, setSelNganh] = useState(SCHOOL[0].nganh[0].ten);
+  const [selKhoa2, setSelKhoa2] = useState(KHOA_LIST[0]);
+  const [selLop, setSelLop] = useState(`CĐ${SCHOOL[0].nganh[0].vietTat}${KHOA_LIST[0].replace('K', '')}${LOP_LETTERS[0]}`);
 
   const nganhList = SCHOOL.find((k) => k.khoa === selKhoa)?.nganh || [];
   const vietTat = nganhList.find((n) => n.ten === selNganh)?.vietTat || '';
@@ -89,10 +89,7 @@ export default function RegisterPage() {
     if (role === 'student') {
       if (!form.mssv) e.mssv = 'MSSV là bắt buộc';
       else if (!/^\d{7}$/.test(form.mssv)) e.mssv = 'MSSV gồm đúng 7 số';
-      if (!selKhoa) e.classId = 'Vui lòng chọn khoa';
-      else if (!selNganh) e.classId = 'Vui lòng chọn ngành';
-      else if (!selKhoa2) e.classId = 'Vui lòng chọn khóa';
-      else if (!selLop) e.classId = 'Vui lòng chọn lớp';
+      if (!selLop) e.classId = 'Vui lòng chọn lớp';
     }
     if (!form.password) e.password = 'Mật khẩu là bắt buộc';
     else if (form.password.length < 6) e.password = 'Mật khẩu tối thiểu 6 ký tự';
@@ -187,10 +184,18 @@ export default function RegisterPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Khoa</label>
                 <select
                   value={selKhoa}
-                  onChange={(e) => { setSelKhoa(e.target.value); setSelNganh(''); setSelKhoa2(''); setSelLop(''); setErrors((er) => ({ ...er, classId: '' })); }}
+                  onChange={(e) => {
+                    const khoa = e.target.value;
+                    const firstNganh = SCHOOL.find((k) => k.khoa === khoa)?.nganh[0];
+                    const firstVietTat = firstNganh?.vietTat || '';
+                    const firstLop = firstVietTat ? `CĐ${firstVietTat}${selKhoa2.replace('K', '')}${LOP_LETTERS[0]}` : '';
+                    setSelKhoa(khoa);
+                    setSelNganh(firstNganh?.ten || '');
+                    setSelLop(firstLop);
+                    setErrors((er) => ({ ...er, classId: '' }));
+                  }}
                   className={SELECT_CLS}
                 >
-                  <option value="">-- Chọn khoa --</option>
                   {SCHOOL.map((k) => <option key={k.khoa} value={k.khoa}>{k.khoa}</option>)}
                 </select>
               </div>
@@ -199,11 +204,15 @@ export default function RegisterPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Ngành</label>
                 <select
                   value={selNganh}
-                  onChange={(e) => { setSelNganh(e.target.value); setSelKhoa2(''); setSelLop(''); }}
-                  disabled={!selKhoa}
-                  className={`${SELECT_CLS} disabled:bg-gray-50 disabled:text-gray-400`}
+                  onChange={(e) => {
+                    const nganh = e.target.value;
+                    const vt = nganhList.find((n) => n.ten === nganh)?.vietTat || '';
+                    const firstLop = vt ? `CĐ${vt}${selKhoa2.replace('K', '')}${LOP_LETTERS[0]}` : '';
+                    setSelNganh(nganh);
+                    setSelLop(firstLop);
+                  }}
+                  className={SELECT_CLS}
                 >
-                  <option value="">-- Chọn ngành --</option>
                   {nganhList.map((n) => <option key={n.ten} value={n.ten}>{n.ten}</option>)}
                 </select>
               </div>
@@ -213,11 +222,14 @@ export default function RegisterPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Khóa</label>
                   <select
                     value={selKhoa2}
-                    onChange={(e) => { setSelKhoa2(e.target.value); setSelLop(''); }}
-                    disabled={!selNganh}
-                    className={`${SELECT_CLS} disabled:bg-gray-50 disabled:text-gray-400`}
+                    onChange={(e) => {
+                      const k = e.target.value;
+                      const firstLop = vietTat ? `CĐ${vietTat}${k.replace('K', '')}${LOP_LETTERS[0]}` : '';
+                      setSelKhoa2(k);
+                      setSelLop(firstLop);
+                    }}
+                    className={SELECT_CLS}
                   >
-                    <option value="">-- Chọn khóa --</option>
                     {KHOA_LIST.map((k) => <option key={k} value={k}>{k}</option>)}
                   </select>
                 </div>
@@ -226,10 +238,8 @@ export default function RegisterPage() {
                   <select
                     value={selLop}
                     onChange={(e) => { setSelLop(e.target.value); setErrors((er) => ({ ...er, classId: '' })); }}
-                    disabled={!selKhoa2}
-                    className={`${SELECT_CLS} disabled:bg-gray-50 disabled:text-gray-400`}
+                    className={SELECT_CLS}
                   >
-                    <option value="">-- Chọn lớp --</option>
                     {lopList.map((l) => <option key={l} value={l}>{l}</option>)}
                   </select>
                 </div>
