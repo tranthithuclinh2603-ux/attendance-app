@@ -40,7 +40,7 @@ export default function LoginForm({ onLogin }) {
       localStorage.setItem('user', JSON.stringify(res.data.user));
       onLogin?.(res.data.user);
       const r = res.data.user.role;
-      navigate(r === 'teacher' ? '/teacher' : r === 'admin' ? '/admin' : r === 'parent' ? '/parent' : '/student');
+      navigate(r === 'teacher' ? '/teacher' : r === 'admin' ? '/admin' : '/student');
     } catch (err) {
       setApiError(err.response?.data?.message || 'Đăng nhập thất bại');
     } finally {
@@ -74,7 +74,7 @@ export default function LoginForm({ onLogin }) {
       localStorage.setItem('user', JSON.stringify(res.data.user));
       onLogin?.(res.data.user);
       const r = res.data.user.role;
-      navigate(r === 'teacher' ? '/teacher' : r === 'admin' ? '/admin' : r === 'parent' ? '/parent' : '/student');
+      navigate(r === 'teacher' ? '/teacher' : r === 'admin' ? '/admin' : '/student');
     } catch (err) {
       if (err.name === 'NotAllowedError') {
         setApiError('Xác thực bị từ chối. Thử lại hoặc dùng mật khẩu.');
@@ -90,8 +90,6 @@ export default function LoginForm({ onLogin }) {
     ? 'Hệ thống điểm danh giảng viên'
     : role === 'admin'
     ? 'Quản trị viên hệ thống'
-    : role === 'parent'
-    ? 'Cổng thông tin phụ huynh'
     : 'Hệ thống điểm danh sinh viên';
 
   return (
@@ -112,11 +110,10 @@ export default function LoginForm({ onLogin }) {
           <select
             value={role}
             onChange={(e) => setRole(e.target.value)}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 bg-white appearance-none"
           >
             <option value="student">Sinh viên</option>
             <option value="teacher">Giảng viên</option>
-            <option value="parent">Phụ huynh</option>
             <option value="admin">Quản trị viên</option>
           </select>
         </div>
@@ -194,7 +191,7 @@ export default function LoginForm({ onLogin }) {
         <p className="text-center text-sm text-gray-500 mt-5">
           Chưa có tài khoản?{' '}
           <Link
-            to={role === 'teacher' ? '/register?role=teacher' : role === 'parent' ? '/register?role=parent' : '/register'}
+            to={role === 'teacher' ? '/register?role=teacher' : '/register'}
             className="text-blue-500 hover:underline font-medium"
           >
             Đăng ký ở đây

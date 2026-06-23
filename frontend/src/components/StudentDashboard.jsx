@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Camera, Calendar, Clock, BookOpen, CheckCircle, XCircle, Trophy, BarChart2, Scan } from 'lucide-react';
+import { Camera, Calendar, Clock, BookOpen, CheckCircle, XCircle, Trophy, BarChart2 } from 'lucide-react';
 import { attendanceAPI } from '../services/api';
 import AttendanceModal from './AttendanceModal';
 import LeaveModal from './LeaveModal';
-import FaceEnrollModal from './FaceEnrollModal';
 import NavBar from './NavBar';
 
 const STATUS_CONFIG = {
@@ -108,7 +107,6 @@ function WeekChart({ history }) {
 export default function StudentDashboard({ user, onLogout, onUpdateUser }) {
   const [showModal, setShowModal] = useState(false);
   const [showLeave, setShowLeave] = useState(false);
-  const [showFaceEnroll, setShowFaceEnroll] = useState(false);
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [leaderboard, setLeaderboard] = useState([]);
@@ -230,16 +228,6 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser }) {
             <span className="text-indigo-100 text-xs">Nộp giấy tờ</span>
           </button>
         </div>
-        <button
-          onClick={() => setShowFaceEnroll(true)}
-          className="w-full bg-violet-500 hover:bg-violet-600 active:scale-95 text-white rounded-2xl py-4 shadow-md flex items-center justify-center gap-3 transition-all"
-        >
-          <Scan size={26} />
-          <div className="text-left">
-            <p className="font-bold text-sm">ĐĂNG KÝ KHUÔN MẶT</p>
-            <p className="text-violet-100 text-xs">Điểm danh bằng nhận diện khuôn mặt</p>
-          </div>
-        </button>
 
         {/* Tabs */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm overflow-hidden">
@@ -354,12 +342,6 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser }) {
       )}
 
       {showLeave && <LeaveModal user={user} onClose={() => setShowLeave(false)} />}
-      {showFaceEnroll && (
-        <FaceEnrollModal
-          onClose={() => setShowFaceEnroll(false)}
-          onEnrolled={() => setToast({ message: '✅ Đăng ký khuôn mặt thành công!', type: 'success' })}
-        />
-      )}
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>

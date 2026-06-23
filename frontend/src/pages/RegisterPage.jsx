@@ -92,7 +92,6 @@ export default function RegisterPage() {
           >
             <option value="student">🎓 Sinh viên</option>
             <option value="teacher">👩‍🏫 Giảng viên</option>
-            <option value="parent">👨‍👩‍👧 Phụ huynh</option>
           </select>
         </div>
 

@@ -7,7 +7,6 @@ import StudentPage from './pages/StudentPage';
 import TeacherPage from './pages/TeacherPage';
 import QRCheckinPage from './pages/QRCheckinPage';
 import AdminDashboard from './components/AdminDashboard';
-import ParentDashboard from './components/ParentDashboard';
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -49,7 +48,6 @@ export default function App() {
     switch (user.role) {
       case 'teacher': return '/teacher';
       case 'admin':   return '/admin';
-      case 'parent':  return '/parent';
       default:        return '/student';
     }
   };
@@ -71,7 +69,6 @@ export default function App() {
         <Route path="/student" element={<StudentPage user={user} onLogout={handleLogout} onUpdateUser={handleUpdateUser} />} />
         <Route path="/teacher" element={<TeacherPage user={user} onLogout={handleLogout} onUpdateUser={handleUpdateUser} />} />
         <Route path="/admin" element={<AdminDashboard user={user} onLogout={handleLogout} />} />
-        <Route path="/parent" element={<ParentDashboard user={user} onLogout={handleLogout} />} />
         <Route path="/qr" element={<QRCheckinPage />} />
         <Route path="/" element={<Navigate to={defaultRoute()} />} />
         <Route path="*" element={<Navigate to="/" />} />
