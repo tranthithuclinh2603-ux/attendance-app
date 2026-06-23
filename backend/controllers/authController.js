@@ -95,6 +95,7 @@ const login = async (req, res) => {
         classId: userData.classId || null,
         mssv: userData.mssv || null,
         teachingClasses: userData.teachingClasses || null,
+        avatar: userData.avatar || null,
       },
     });
   } catch (error) {
@@ -160,6 +161,20 @@ const updateAvatar = async (req, res) => {
   }
 };
 
+const updateClass = async (req, res) => {
+  try {
+    const { uid, role } = req.user;
+    if (role !== 'student') return res.status(403).json({ success: false, message: 'Chỉ sinh viên mới được đổi lớp' });
+    const { classId } = req.body;
+    if (!classId) return res.status(400).json({ success: false, message: 'Thiếu mã lớp' });
+    await db.ref(`users/${uid}/classId`).set(classId);
+    res.json({ success: true, message: 'Cập nhật lớp thành công', classId });
+  } catch (error) {
+    console.error('Update class error:', error);
+    res.status(500).json({ success: false, message: 'Lỗi server' });
+  }
+};
+
 const bulkRegister = async (req, res) => {
   try {
     const { students } = req.body;
@@ -199,4 +214,4 @@ const bulkRegister = async (req, res) => {
   }
 };
 
-module.exports = { register, login, resetPassword, updateProfile, updateAvatar, bulkRegister };
+module.exports = { register, login, resetPassword, updateProfile, updateAvatar, updateClass, bulkRegister };

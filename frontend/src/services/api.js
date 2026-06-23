@@ -32,6 +32,7 @@ export const authAPI = {
   resetPassword: (data) => API.post('/auth/reset-password', data),
   updateProfile: (data) => API.put('/auth/profile', data),
   updateAvatar: (data) => API.put('/auth/avatar', data),
+  updateClass: (data) => API.put('/auth/class', data),
   bulkRegister: (data) => API.post('/auth/bulk-register', data),
 };
 

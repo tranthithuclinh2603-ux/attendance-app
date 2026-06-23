@@ -7,6 +7,11 @@ export default function NavBar({ user, onLogout, onUpdateUser }) {
   const [showProfile, setShowProfile] = useState(false);
   const [localAvatar, setLocalAvatar] = useState(user?.avatar || null);
 
+  // Sync avatar khi user prop thay đổi (login thiết bị khác)
+  useEffect(() => {
+    setLocalAvatar(user?.avatar || null);
+  }, [user?.avatar]);
+
   useEffect(() => {
     if (dark) document.documentElement.classList.add('dark');
     else document.documentElement.classList.remove('dark');
@@ -21,6 +26,10 @@ export default function NavBar({ user, onLogout, onUpdateUser }) {
   const handleUpdateAvatar = (newAvatar) => {
     setLocalAvatar(newAvatar);
     onUpdateUser?.(user?.name, newAvatar);
+  };
+
+  const handleUpdateClass = (newClassId) => {
+    onUpdateUser?.(user?.name, localAvatar, newClassId);
   };
 
   return (
@@ -72,6 +81,7 @@ export default function NavBar({ user, onLogout, onUpdateUser }) {
           onClose={() => setShowProfile(false)}
           onUpdateName={handleUpdateName}
           onUpdateAvatar={handleUpdateAvatar}
+          onUpdateClass={handleUpdateClass}
         />
       )}
     </>
