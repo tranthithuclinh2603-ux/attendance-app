@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Camera, Calendar, Clock, BookOpen, CheckCircle, XCircle, Trophy, BarChart2 } from 'lucide-react';
 import { attendanceAPI } from '../services/api';
 import AttendanceModal from './AttendanceModal';
+import LeaveModal from './LeaveModal';
 import NavBar from './NavBar';
 
 const STATUS_CONFIG = {
@@ -105,6 +106,7 @@ function WeekChart({ history }) {
 
 export default function StudentDashboard({ user, onLogout, onUpdateUser }) {
   const [showModal, setShowModal] = useState(false);
+  const [showLeave, setShowLeave] = useState(false);
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [leaderboard, setLeaderboard] = useState([]);
@@ -208,14 +210,23 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser }) {
         </div>
 
         {/* Check-in button */}
-        <button
-          onClick={() => setShowModal(true)}
-          className="w-full bg-blue-500 hover:bg-blue-600 active:scale-95 text-white rounded-2xl py-6 shadow-md flex flex-col items-center gap-2 transition-all"
-        >
-          <Camera size={40} />
-          <span className="text-xl font-bold">ĐIỂM DANH NGAY</span>
-          <span className="text-blue-100 text-sm">GPS + Nhận diện khuôn mặt</span>
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={() => setShowModal(true)}
+            className="flex-1 bg-blue-500 hover:bg-blue-600 active:scale-95 text-white rounded-2xl py-6 shadow-md flex flex-col items-center gap-2 transition-all"
+          >
+            <Camera size={36} />
+            <span className="text-lg font-bold">ĐIỂM DANH</span>
+            <span className="text-blue-100 text-xs">GPS + Khuôn mặt</span>
+          </button>
+          <button
+            onClick={() => setShowLeave(true)}
+            className="bg-orange-500 hover:bg-orange-600 active:scale-95 text-white rounded-2xl px-5 shadow-md flex flex-col items-center justify-center gap-2 transition-all"
+          >
+            <span className="text-2xl">🏥</span>
+            <span className="text-xs font-bold text-center leading-tight">Xin<br/>nghỉ</span>
+          </button>
+        </div>
 
         {/* Tabs */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm overflow-hidden">
@@ -328,6 +339,8 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser }) {
           onSuccess={handleSuccess}
         />
       )}
+
+      {showLeave && <LeaveModal user={user} onClose={() => setShowLeave(false)} />}
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>

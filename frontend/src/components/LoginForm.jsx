@@ -55,7 +55,9 @@ export default function LoginForm({ onLogin }) {
             <GraduationCap className="text-blue-600" size={32} />
           </div>
           <h1 className="text-2xl font-bold text-gray-800">Đăng nhập</h1>
-          <p className="text-gray-500 text-sm mt-1">Hệ thống điểm danh sinh viên</p>
+          <p className="text-gray-500 text-sm mt-1">
+            {role === 'teacher' ? 'Hệ thống điểm danh giảng viên' : 'Hệ thống điểm danh sinh viên'}
+          </p>
         </div>
 
         {/* Role selector */}
@@ -129,14 +131,15 @@ export default function LoginForm({ onLogin }) {
           </button>
         </form>
 
-        {role === 'student' && (
-          <p className="text-center text-sm text-gray-500 mt-5">
-            Chưa có tài khoản?{' '}
-            <Link to="/register" className="text-blue-500 hover:underline font-medium">
-              Đăng ký ở đây
-            </Link>
-          </p>
-        )}
+        <p className="text-center text-sm text-gray-500 mt-5">
+          Chưa có tài khoản?{' '}
+          <Link
+            to={role === 'teacher' ? '/register?role=teacher' : '/register'}
+            className="text-blue-500 hover:underline font-medium"
+          >
+            Đăng ký ở đây
+          </Link>
+        </p>
         <p className="text-center text-sm text-gray-400 mt-2">
           <Link to="/forgot-password" className="hover:underline hover:text-blue-500">
             Quên mật khẩu?

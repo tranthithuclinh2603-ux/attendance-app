@@ -51,4 +51,12 @@ export const attendanceAPI = {
   qrCheckin: (data) => API.post('/attendance/qr-checkin', data),
 };
 
+// Leave (Xin nghỉ phép)
+export const leaveAPI = {
+  submit: (data) => API.post('/leave', data),
+  getMy: () => API.get('/leave/my'),
+  getByClass: (classId) => API.get(`/leave/class/${classId}`),
+  review: (leaveId, data) => API.put(`/leave/${leaveId}/review`, data),
+};
+
 export default API;

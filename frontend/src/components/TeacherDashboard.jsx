@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { RefreshCw, Download, Users, CheckCircle, Clock, XCircle, AlertTriangle, Search, BarChart2, FileText, PlusCircle, Grid, Upload } from 'lucide-react';
+import LeavePanel from './LeavePanel';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -353,6 +354,7 @@ export default function TeacherDashboard({ user, onLogout, onUpdateUser }) {
               { key: 'alerts', label: '⚠️ Cảnh báo' },
               { key: 'stats', label: '📊 Thống kê' },
               { key: 'bulk', label: '📤 Bulk Upload' },
+              { key: 'leave', label: '🏥 Nghỉ phép' },
             ].map(({ key, label }) => (
               <button
                 key={key}
@@ -523,6 +525,9 @@ export default function TeacherDashboard({ user, onLogout, onUpdateUser }) {
               )}
             </div>
           )}
+
+          {/* Leave tab */}
+          {activeTab === 'leave' && <LeavePanel classId={selectedClass} />}
 
           {/* Stats tab */}
 
