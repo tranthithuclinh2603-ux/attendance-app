@@ -103,4 +103,48 @@ const login = async (req, res) => {
   }
 };
 
-module.exports = { register, login };
+const resetPassword = async (req, res) => {
+  try {
+    const { email, newPassword } = req.body;
+    if (!email || !newPassword) {
+      return res.status(400).json({ success: false, message: 'Email và mật khẩu mới là bắt buộc' });
+    }
+    if (newPassword.length < 6) {
+      return res.status(400).json({ success: false, message: 'Mật khẩu tối thiểu 6 ký tự' });
+    }
+
+    const snapshot = await db.ref('users').orderByChild('email').equalTo(email).once('value');
+    if (!snapshot.exists()) {
+      return res.status(404).json({ success: false, message: 'Email không tồn tại trong hệ thống' });
+    }
+
+    let uid;
+    snapshot.forEach((child) => { uid = child.key; });
+
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    await db.ref(`users/${uid}/passwordHash`).set(passwordHash);
+
+    res.json({ success: true, message: 'Đặt lại mật khẩu thành công' });
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(500).json({ success: false, message: 'Lỗi server' });
+  }
+};
+
+const updateProfile = async (req, res) => {
+  try {
+    const { uid } = req.user;
+    const { name } = req.body;
+    if (!name || !name.trim()) {
+      return res.status(400).json({ success: false, message: 'Tên không được để trống' });
+    }
+
+    await db.ref(`users/${uid}/name`).set(name.trim());
+    res.json({ success: true, message: 'Cập nhật thành công', name: name.trim() });
+  } catch (error) {
+    console.error('Update profile error:', error);
+    res.status(500).json({ success: false, message: 'Lỗi server' });
+  }
+};
+
+module.exports = { register, login, resetPassword, updateProfile };

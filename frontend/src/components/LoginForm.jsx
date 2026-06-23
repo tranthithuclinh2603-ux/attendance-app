@@ -137,6 +137,11 @@ export default function LoginForm({ onLogin }) {
             </Link>
           </p>
         )}
+        <p className="text-center text-sm text-gray-400 mt-2">
+          <Link to="/forgot-password" className="hover:underline hover:text-blue-500">
+            Quên mật khẩu?
+          </Link>
+        </p>
       </div>
     </div>
   );

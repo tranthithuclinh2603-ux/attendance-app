@@ -27,7 +27,7 @@ function Toast({ message, type, onClose }) {
   );
 }
 
-export default function StudentDashboard({ user, onLogout }) {
+export default function StudentDashboard({ user, onLogout, onUpdateUser }) {
   const [showModal, setShowModal] = useState(false);
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -83,8 +83,8 @@ export default function StudentDashboard({ user, onLogout }) {
   const today = new Date().toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' });
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <NavBar user={user} onLogout={onLogout} />
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <NavBar user={user} onLogout={onLogout} onUpdateUser={onUpdateUser} />
 
       <div className="max-w-2xl mx-auto px-4 py-6 space-y-5">
         {/* Greeting card */}

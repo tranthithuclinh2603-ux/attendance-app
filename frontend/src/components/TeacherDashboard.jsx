@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { RefreshCw, Download, Users, CheckCircle, Clock, XCircle, AlertTriangle, Search, BarChart2 } from 'lucide-react';
+import { RefreshCw, Download, Users, CheckCircle, Clock, XCircle, AlertTriangle, Search, BarChart2, FileText } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { attendanceAPI } from '../services/api';
 import AttendanceTable from './AttendanceTable';
 import NavBar from './NavBar';
@@ -47,7 +49,7 @@ function AlertsPanel({ classId }) {
   );
 }
 
-export default function TeacherDashboard({ user, onLogout }) {
+export default function TeacherDashboard({ user, onLogout, onUpdateUser }) {
   const [selectedClass, setSelectedClass] = useState(CLASSES[0]);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [data, setData] = useState([]);
@@ -105,9 +107,37 @@ export default function TeacherDashboard({ user, onLogout }) {
 
   const pct = (n) => (stats.total ? Math.round((n / stats.total) * 100) : 0);
 
+  const exportPDF = () => {
+    const doc = new jsPDF();
+    doc.setFontSize(16);
+    doc.text('BẢNG ĐIỂM DANH SINH VIÊN', 14, 18);
+    doc.setFontSize(11);
+    doc.text(`Lớp: ${selectedClass}   Ngày: ${selectedDate}`, 14, 28);
+    doc.text(`Trường Cao Đẳng Kinh Tế Đối Ngoại`, 14, 36);
+    doc.setFontSize(10);
+    doc.text(`Có mặt: ${stats.present} | Muộn: ${stats.late} | Vắng: ${stats.absent} | Tổng: ${stats.total}`, 14, 44);
+
+    autoTable(doc, {
+      startY: 50,
+      head: [['STT', 'Họ tên', 'MSSV', 'Trạng thái', 'Giờ vào']],
+      body: data.map((item, i) => [
+        i + 1,
+        item.name,
+        item.studentId,
+        item.status === 'present' ? 'Có mặt' : item.status === 'late' ? 'Muộn' : 'Vắng',
+        item.time,
+      ]),
+      styles: { font: 'helvetica', fontSize: 10 },
+      headStyles: { fillColor: [59, 130, 246] },
+      alternateRowStyles: { fillColor: [245, 247, 250] },
+    });
+
+    doc.save(`Attendance_${selectedClass}_${selectedDate}.pdf`);
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <NavBar user={user} onLogout={onLogout} />
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <NavBar user={user} onLogout={onLogout} onUpdateUser={onUpdateUser} />
 
       <div className="max-w-5xl mx-auto px-4 py-6 space-y-5">
         {/* Header */}
@@ -151,7 +181,14 @@ export default function TeacherDashboard({ user, onLogout }) {
               className="flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
             >
               <Download size={16} />
-              Tải Excel
+              Excel
+            </button>
+            <button
+              onClick={exportPDF}
+              className="flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
+            >
+              <FileText size={16} />
+              PDF
             </button>
           </div>
         </div>
