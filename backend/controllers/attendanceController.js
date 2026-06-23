@@ -265,4 +265,40 @@ const getAbsenceAlerts = async (req, res) => {
   }
 };
 
-module.exports = { checkin, getHistory, getClassAttendance, updateAttendance, deleteAttendance, getLeaderboard, getAbsenceAlerts };
+const manualCheckin = async (req, res) => {
+  try {
+    const { classId, studentUid, status, date } = req.body;
+    if (!classId || !studentUid || !status) {
+      return res.status(400).json({ success: false, message: 'Thiếu thông tin' });
+    }
+
+    const validStatuses = ['present', 'late', 'absent'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ success: false, message: 'Trạng thái không hợp lệ' });
+    }
+
+    const dateKey = date || new Date().toISOString().split('T')[0];
+    const attendanceKey = `${classId}_${dateKey}`;
+
+    const studentSnap = await db.ref(`users/${studentUid}`).once('value');
+    if (!studentSnap.exists()) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy sinh viên' });
+    }
+    const student = studentSnap.val();
+
+    const record = {
+      timestamp: new Date(`${dateKey}T08:45:00`).toISOString(),
+      status,
+      name: student.name,
+      manualEntry: true,
+    };
+
+    await db.ref(`attendance/${attendanceKey}/${studentUid}`).set(record);
+    res.json({ success: true, message: `Đã thêm điểm danh cho ${student.name}` });
+  } catch (error) {
+    console.error('Manual checkin error:', error);
+    res.status(500).json({ success: false, message: 'Lỗi server' });
+  }
+};
+
+module.exports = { checkin, getHistory, getClassAttendance, updateAttendance, deleteAttendance, getLeaderboard, getAbsenceAlerts, manualCheckin };

@@ -31,6 +31,7 @@ export const authAPI = {
   login: (data) => API.post('/auth/login', data),
   resetPassword: (data) => API.post('/auth/reset-password', data),
   updateProfile: (data) => API.put('/auth/profile', data),
+  updateAvatar: (data) => API.put('/auth/avatar', data),
 };
 
 // Attendance
@@ -44,6 +45,7 @@ export const attendanceAPI = {
   deleteAttendance: (attendanceId) => API.delete(`/attendance/${attendanceId}`),
   getLeaderboard: (classId) => API.get(`/attendance/leaderboard/${classId}`),
   getAbsenceAlerts: (classId) => API.get(`/attendance/alerts/${classId}`),
+  manualCheckin: (data) => API.post('/attendance/manual', data),
 };
 
 export default API;

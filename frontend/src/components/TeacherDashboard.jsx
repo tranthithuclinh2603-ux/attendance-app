@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { RefreshCw, Download, Users, CheckCircle, Clock, XCircle, AlertTriangle, Search, BarChart2, FileText } from 'lucide-react';
+import { RefreshCw, Download, Users, CheckCircle, Clock, XCircle, AlertTriangle, Search, BarChart2, FileText, PlusCircle } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -8,6 +8,91 @@ import AttendanceTable from './AttendanceTable';
 import NavBar from './NavBar';
 
 const CLASSES = ['CĐTMDT28A','CĐTMDT28B','CĐTMDT28C','CĐTMDT28D','CĐTMDT28E','CĐTMDT28F','CĐTMDT28G','CĐTMDT28H','CĐTMDT28I'];
+
+function ManualModal({ classId, date, onClose, onDone }) {
+  const [students, setStudents] = useState([]);
+  const [selectedUid, setSelectedUid] = useState('');
+  const [status, setStatus] = useState('present');
+  const [loading, setLoading] = useState(false);
+  const [fetchingStudents, setFetchingStudents] = useState(true);
+
+  useEffect(() => {
+    attendanceAPI.getClassAttendance(classId, date)
+      .then((res) => {
+        setStudents(res.data.data || []);
+        if (res.data.data?.length) setSelectedUid(res.data.data[0].uid);
+      })
+      .catch(() => {})
+      .finally(() => setFetchingStudents(false));
+  }, [classId, date]);
+
+  const handleSave = async () => {
+    if (!selectedUid) return;
+    setLoading(true);
+    try {
+      await attendanceAPI.manualCheckin({ classId, studentUid: selectedUid, status, date });
+      onDone();
+      onClose();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Lỗi khi thêm điểm danh');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-sm p-6">
+        <h3 className="font-semibold text-gray-800 dark:text-white mb-4">➕ Thêm điểm danh thủ công</h3>
+        <p className="text-xs text-gray-400 mb-4">Lớp: {classId} · Ngày: {date}</p>
+
+        {fetchingStudents ? (
+          <div className="py-4 text-center text-gray-400 text-sm">Đang tải danh sách...</div>
+        ) : (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Sinh viên</label>
+              <select
+                value={selectedUid}
+                onChange={(e) => setSelectedUid(e.target.value)}
+                className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {students.map((s) => (
+                  <option key={s.uid} value={s.uid}>{s.name} ({s.studentId})</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Trạng thái</label>
+              <select
+                value={status}
+                onChange={(e) => setStatus(e.target.value)}
+                className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="present">✅ Có mặt</option>
+                <option value="late">⏰ Muộn</option>
+                <option value="absent">❌ Vắng</option>
+              </select>
+            </div>
+          </div>
+        )}
+
+        <div className="flex gap-3 mt-5">
+          <button onClick={onClose} className="flex-1 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 py-2.5 rounded-xl text-sm font-medium dark:text-gray-200 transition-colors">
+            Hủy
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={loading || !selectedUid}
+            className="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-2.5 rounded-xl text-sm font-medium transition-colors disabled:opacity-50"
+          >
+            {loading ? 'Đang lưu...' : 'Xác nhận'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function AlertsPanel({ classId }) {
   const [alerts, setAlerts] = useState([]);
@@ -57,6 +142,7 @@ export default function TeacherDashboard({ user, onLogout, onUpdateUser }) {
   const [lastRefresh, setLastRefresh] = useState(null);
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState('list');
+  const [showManual, setShowManual] = useState(false);
 
   const stats = {
     present: data.filter((d) => d.status === 'present').length,
@@ -248,11 +334,18 @@ export default function TeacherDashboard({ user, onLogout, onUpdateUser }) {
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     placeholder="Tìm theo tên hoặc MSSV..."
-                    className="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full pl-8 pr-3 py-2 border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
+                <button
+                  onClick={() => setShowManual(true)}
+                  className="flex items-center gap-1.5 bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors shrink-0"
+                >
+                  <PlusCircle size={15} />
+                  <span className="hidden sm:block">Thêm TT</span>
+                </button>
                 {lastRefresh && (
-                  <span className="text-xs text-gray-400 shrink-0">Cập nhật {lastRefresh}</span>
+                  <span className="text-xs text-gray-400 shrink-0 hidden sm:block">Cập nhật {lastRefresh}</span>
                 )}
               </div>
               {loading ? (
@@ -274,6 +367,7 @@ export default function TeacherDashboard({ user, onLogout, onUpdateUser }) {
           )}
 
           {/* Stats tab */}
+
           {activeTab === 'stats' && (
             <div className="p-5 space-y-5">
               <h4 className="font-semibold text-gray-800 flex items-center gap-2">
@@ -330,6 +424,15 @@ export default function TeacherDashboard({ user, onLogout, onUpdateUser }) {
           )}
         </div>
       </div>
+
+      {showManual && (
+        <ManualModal
+          classId={selectedClass}
+          date={selectedDate}
+          onClose={() => setShowManual(false)}
+          onDone={fetchData}
+        />
+      )}
     </div>
   );
 }

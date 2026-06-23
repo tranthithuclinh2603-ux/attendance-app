@@ -1,23 +1,26 @@
 import React, { useState, useEffect } from 'react';
-import { LogOut, GraduationCap, Moon, Sun, UserCircle } from 'lucide-react';
+import { LogOut, GraduationCap, Moon, Sun } from 'lucide-react';
 import ProfileModal from './ProfileModal';
 
 export default function NavBar({ user, onLogout, onUpdateUser }) {
   const [dark, setDark] = useState(() => localStorage.getItem('darkMode') === 'true');
   const [showProfile, setShowProfile] = useState(false);
+  const [localAvatar, setLocalAvatar] = useState(user?.avatar || null);
 
   useEffect(() => {
-    if (dark) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
+    if (dark) document.documentElement.classList.add('dark');
+    else document.documentElement.classList.remove('dark');
     localStorage.setItem('darkMode', dark);
   }, [dark]);
 
   const handleUpdateName = (newName) => {
-    if (onUpdateUser) onUpdateUser(newName);
+    onUpdateUser?.(newName, localAvatar);
     setShowProfile(false);
+  };
+
+  const handleUpdateAvatar = (newAvatar) => {
+    setLocalAvatar(newAvatar);
+    onUpdateUser?.(user?.name, newAvatar);
   };
 
   return (
@@ -26,10 +29,9 @@ export default function NavBar({ user, onLogout, onUpdateUser }) {
         <div className="flex items-center gap-2">
           <GraduationCap size={24} />
           <span className="font-semibold text-lg hidden sm:block">Điểm Danh Sinh Viên</span>
-          <span className="font-semibold text-lg sm:hidden">Điểm Danh</span>
+          <span className="font-semibold sm:hidden">Điểm Danh</span>
         </div>
         <div className="flex items-center gap-2">
-          {/* Dark mode toggle */}
           <button
             onClick={() => setDark((d) => !d)}
             className="p-2 bg-blue-700 dark:bg-gray-700 hover:bg-blue-800 dark:hover:bg-gray-600 rounded-lg transition-colors"
@@ -38,16 +40,22 @@ export default function NavBar({ user, onLogout, onUpdateUser }) {
             {dark ? <Sun size={16} /> : <Moon size={16} />}
           </button>
 
-          {/* Profile button */}
           <button
             onClick={() => setShowProfile(true)}
-            className="flex items-center gap-1.5 bg-blue-700 dark:bg-gray-700 hover:bg-blue-800 dark:hover:bg-gray-600 px-2.5 py-2 rounded-lg text-sm transition-colors"
+            className="flex items-center gap-2 bg-blue-700 dark:bg-gray-700 hover:bg-blue-800 dark:hover:bg-gray-600 px-2 py-1.5 rounded-lg transition-colors"
           >
-            <UserCircle size={16} />
-            <span className="hidden sm:block max-w-[100px] truncate">{user?.name}</span>
+            <div className="w-7 h-7 rounded-full overflow-hidden border-2 border-white/40 shrink-0">
+              {localAvatar ? (
+                <img src={localAvatar} alt="avatar" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full bg-white/20 flex items-center justify-center text-xs font-bold">
+                  {user?.name?.charAt(0)?.toUpperCase() || '?'}
+                </div>
+              )}
+            </div>
+            <span className="hidden sm:block text-sm max-w-[90px] truncate">{user?.name}</span>
           </button>
 
-          {/* Logout */}
           <button
             onClick={onLogout}
             className="flex items-center gap-1 bg-blue-700 dark:bg-gray-700 hover:bg-blue-800 dark:hover:bg-gray-600 px-3 py-2 rounded-lg text-sm transition-colors"
@@ -60,9 +68,10 @@ export default function NavBar({ user, onLogout, onUpdateUser }) {
 
       {showProfile && (
         <ProfileModal
-          user={user}
+          user={{ ...user, avatar: localAvatar }}
           onClose={() => setShowProfile(false)}
           onUpdateName={handleUpdateName}
+          onUpdateAvatar={handleUpdateAvatar}
         />
       )}
     </>

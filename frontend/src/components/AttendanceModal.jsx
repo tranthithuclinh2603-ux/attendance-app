@@ -132,9 +132,9 @@ export default function AttendanceModal({ classId, onClose, onSuccess }) {
         gpsLng: gpsData?.lng,
         timestamp: new Date().toISOString(),
       });
-      setResult({ success: true, message: res.data.message });
+      setResult({ success: true, message: res.data.message, status: res.data.status });
       setStep('result');
-      onSuccess?.();
+      onSuccess?.(res.data.status);
     } catch (err) {
       setResult({ success: false, message: err.response?.data?.message || 'Điểm danh thất bại' });
       setStep('result');
@@ -320,10 +320,10 @@ export default function AttendanceModal({ classId, onClose, onSuccess }) {
           {/* Result */}
           {step === 'result' && result && (
             <div className="py-8 flex flex-col items-center gap-4 text-center">
-              <div className={`w-20 h-20 rounded-full flex items-center justify-center text-4xl ${result.success ? 'bg-green-100' : 'bg-red-100'}`}>
-                {result.success ? '✅' : '❌'}
+              <div className={`w-20 h-20 rounded-full flex items-center justify-center text-4xl ${result.success ? (result.status === 'late' ? 'bg-yellow-100' : 'bg-green-100') : 'bg-red-100'}`}>
+                {result.success ? (result.status === 'late' ? '⏰' : '✅') : '❌'}
               </div>
-              <p className={`text-lg font-semibold ${result.success ? 'text-green-600' : 'text-red-600'}`}>
+              <p className={`text-lg font-semibold ${result.success ? (result.status === 'late' ? 'text-yellow-600' : 'text-green-600') : 'text-red-600'}`}>
                 {result.message}
               </p>
               <button onClick={onClose} className="mt-2 bg-blue-500 hover:bg-blue-600 text-white px-8 py-2.5 rounded-xl transition-colors">

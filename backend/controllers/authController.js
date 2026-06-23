@@ -147,4 +147,17 @@ const updateProfile = async (req, res) => {
   }
 };
 
-module.exports = { register, login, resetPassword, updateProfile };
+const updateAvatar = async (req, res) => {
+  try {
+    const { uid } = req.user;
+    const { avatar } = req.body;
+    if (!avatar) return res.status(400).json({ success: false, message: 'Không có ảnh' });
+    await db.ref(`users/${uid}/avatar`).set(avatar);
+    res.json({ success: true, message: 'Cập nhật ảnh thành công' });
+  } catch (error) {
+    console.error('Avatar error:', error);
+    res.status(500).json({ success: false, message: 'Lỗi server' });
+  }
+};
+
+module.exports = { register, login, resetPassword, updateProfile, updateAvatar };

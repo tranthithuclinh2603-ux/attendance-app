@@ -31,8 +31,8 @@ export default function App() {
     setUser(null);
   };
 
-  const handleUpdateUser = (newName) => {
-    const updated = { ...user, name: newName };
+  const handleUpdateUser = (newName, newAvatar) => {
+    const updated = { ...user, name: newName ?? user?.name, avatar: newAvatar ?? user?.avatar };
     setUser(updated);
     localStorage.setItem('user', JSON.stringify(updated));
   };
