@@ -8,7 +8,7 @@ const SCHOOL_LOCATION = {
   lat: 10.813308852984058,
   lng: 106.77209163591941,
   radius: 200,
-  name: 'Trường Đại học',
+  name: 'Trường Cao Đẳng Kinh Tế Đối Ngoại',
 };
 
 // Tính khoảng cách giữa 2 tọa độ (đơn vị: mét)

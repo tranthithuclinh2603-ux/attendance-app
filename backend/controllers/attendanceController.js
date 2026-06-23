@@ -172,4 +172,97 @@ const deleteAttendance = async (req, res) => {
   }
 };
 
-module.exports = { checkin, getHistory, getClassAttendance, updateAttendance, deleteAttendance };
+const getLeaderboard = async (req, res) => {
+  try {
+    const { classId } = req.params;
+    const today = new Date();
+    const dates = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      dates.push(d.toISOString().split('T')[0]);
+    }
+
+    const studentsSnap = await db.ref('users').orderByChild('classId').equalTo(classId).once('value');
+    const studentStats = {};
+    studentsSnap.forEach((child) => {
+      const uid = child.key;
+      const student = child.val();
+      if (student.role !== 'student') return;
+      studentStats[uid] = { name: student.name, mssv: student.mssv, present: 0, total: 0 };
+    });
+
+    for (const date of dates) {
+      const snap = await db.ref(`attendance/${classId}_${date}`).once('value');
+      const data = snap.val() || {};
+      for (const uid of Object.keys(studentStats)) {
+        studentStats[uid].total++;
+        const record = data[uid];
+        if (record && (record.status === 'present' || record.status === 'late')) {
+          studentStats[uid].present++;
+        }
+      }
+    }
+
+    const ranking = Object.values(studentStats)
+      .map((s) => ({ ...s, rate: s.total > 0 ? Math.round((s.present / s.total) * 100) : 0 }))
+      .sort((a, b) => b.rate - a.rate || b.present - a.present)
+      .slice(0, 10);
+
+    res.json({ success: true, data: ranking, period: `${dates[0]} → ${dates[6]}` });
+  } catch (err) {
+    console.error('Leaderboard error:', err);
+    res.status(500).json({ success: false, message: 'Lỗi server' });
+  }
+};
+
+const getAbsenceAlerts = async (req, res) => {
+  try {
+    const { classId } = req.params;
+    const today = new Date();
+    const dates = [];
+    for (let i = 13; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      dates.push(d.toISOString().split('T')[0]);
+    }
+
+    const studentsSnap = await db.ref('users').orderByChild('classId').equalTo(classId).once('value');
+    const studentAttendance = {};
+    studentsSnap.forEach((child) => {
+      const uid = child.key;
+      const student = child.val();
+      if (student.role !== 'student') return;
+      studentAttendance[uid] = { name: student.name, mssv: student.mssv, records: [] };
+    });
+
+    for (const date of dates) {
+      const snap = await db.ref(`attendance/${classId}_${date}`).once('value');
+      const data = snap.val() || {};
+      for (const uid of Object.keys(studentAttendance)) {
+        const record = data[uid];
+        studentAttendance[uid].records.push({ date, status: record?.status || 'absent' });
+      }
+    }
+
+    const alerts = [];
+    for (const [uid, student] of Object.entries(studentAttendance)) {
+      let consecutive = 0;
+      for (let i = student.records.length - 1; i >= 0; i--) {
+        if (student.records[i].status === 'absent') consecutive++;
+        else break;
+      }
+      if (consecutive >= 2) {
+        alerts.push({ uid, name: student.name, mssv: student.mssv, consecutiveAbsent: consecutive });
+      }
+    }
+
+    alerts.sort((a, b) => b.consecutiveAbsent - a.consecutiveAbsent);
+    res.json({ success: true, data: alerts });
+  } catch (err) {
+    console.error('Alerts error:', err);
+    res.status(500).json({ success: false, message: 'Lỗi server' });
+  }
+};
+
+module.exports = { checkin, getHistory, getClassAttendance, updateAttendance, deleteAttendance, getLeaderboard, getAbsenceAlerts };

@@ -40,6 +40,8 @@ export const attendanceAPI = {
   updateAttendance: (attendanceId, status) =>
     API.put(`/attendance/${attendanceId}`, { status }),
   deleteAttendance: (attendanceId) => API.delete(`/attendance/${attendanceId}`),
+  getLeaderboard: (classId) => API.get(`/attendance/leaderboard/${classId}`),
+  getAbsenceAlerts: (classId) => API.get(`/attendance/alerts/${classId}`),
 };
 
 export default API;

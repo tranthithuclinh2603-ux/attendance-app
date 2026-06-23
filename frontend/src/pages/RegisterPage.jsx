@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { GraduationCap, Eye, EyeOff, AlertCircle, CheckCircle } from 'lucide-react';
 import { authAPI } from '../services/api';
 
-const CLASSES = ['ATTT1', 'ATTT2', 'CNTT1', 'CNTT2'];
+const CLASSES = ['CĐTMDT28A','CĐTMDT28B','CĐTMDT28C','CĐTMDT28D','CĐTMDT28E','CĐTMDT28F','CĐTMDT28G','CĐTMDT28H','CĐTMDT28I'];
 
 export default function RegisterPage() {
   const navigate = useNavigate();
