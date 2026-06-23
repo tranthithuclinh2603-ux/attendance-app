@@ -75,10 +75,10 @@ export default function LeaveModal({ user, onClose }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden max-h-[90vh] flex flex-col">
         {/* Header */}
-        <div className="bg-gradient-to-r from-orange-500 to-orange-600 px-5 py-4 flex items-center justify-between text-white shrink-0">
+        <div className="bg-gradient-to-r from-indigo-500 to-indigo-600 px-5 py-4 flex items-center justify-between text-white shrink-0">
           <div>
             <h3 className="font-bold text-lg">🏥 Xin nghỉ phép</h3>
-            <p className="text-orange-100 text-xs mt-0.5">Nộp giấy tờ & chờ giảng viên duyệt</p>
+            <p className="text-indigo-100 text-xs mt-0.5">Nộp giấy tờ & chờ giảng viên duyệt</p>
           </div>
           <button onClick={onClose} className="text-white/70 hover:text-white"><X size={22} /></button>
         </div>
@@ -91,7 +91,7 @@ export default function LeaveModal({ user, onClose }) {
               onClick={key === 'history' ? loadHistory : () => setTab('form')}
               className={`flex-1 py-2.5 text-sm font-medium transition-colors ${
                 tab === key
-                  ? 'border-b-2 border-orange-500 text-orange-600 dark:text-orange-400'
+                  ? 'border-b-2 border-indigo-500 text-indigo-600 dark:text-indigo-400'
                   : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'
               }`}
             >
@@ -109,7 +109,7 @@ export default function LeaveModal({ user, onClose }) {
                   {result.ok ? <CheckCircle size={56} /> : <AlertCircle size={56} />}
                   <p className="font-medium">{result.msg}</p>
                   {result.ok && (
-                    <button onClick={onClose} className="mt-2 bg-orange-500 hover:bg-orange-600 text-white px-8 py-2.5 rounded-xl text-sm">
+                    <button onClick={onClose} className="mt-2 bg-indigo-500 hover:bg-indigo-600 text-white px-8 py-2.5 rounded-xl text-sm">
                       Đóng
                     </button>
                   )}
@@ -128,7 +128,7 @@ export default function LeaveModal({ user, onClose }) {
                       value={form.classId}
                       onChange={(e) => setForm((f) => ({ ...f, classId: e.target.value }))}
                       placeholder="Ví dụ: CĐTMDT28A"
-                      className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2.5 text-sm dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-400"
+                      className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2.5 text-sm dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-400"
                     />
                   </div>
 
@@ -139,7 +139,7 @@ export default function LeaveModal({ user, onClose }) {
                       type="date"
                       value={form.date}
                       onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
-                      className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2.5 text-sm dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-400"
+                      className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2.5 text-sm dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-400"
                     />
                   </div>
 
@@ -151,7 +151,7 @@ export default function LeaveModal({ user, onClose }) {
                       onChange={(e) => setForm((f) => ({ ...f, reason: e.target.value }))}
                       placeholder="Mô tả lý do xin nghỉ..."
                       rows={3}
-                      className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2.5 text-sm dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-400 resize-none"
+                      className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2.5 text-sm dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-400 resize-none"
                     />
                   </div>
 
@@ -174,7 +174,7 @@ export default function LeaveModal({ user, onClose }) {
                       <button
                         type="button"
                         onClick={() => fileRef.current?.click()}
-                        className="w-full border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl py-6 flex flex-col items-center gap-2 text-gray-400 hover:border-orange-400 hover:text-orange-500 transition-colors"
+                        className="w-full border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl py-6 flex flex-col items-center gap-2 text-gray-400 hover:border-indigo-400 hover:text-indigo-500 transition-colors"
                       >
                         <Upload size={24} />
                         <span className="text-sm">Bấm để tải ảnh lên</span>
@@ -183,14 +183,14 @@ export default function LeaveModal({ user, onClose }) {
                   </div>
 
                   {/* Hạn mức nghỉ */}
-                  <div className="bg-orange-50 dark:bg-orange-900/20 rounded-xl p-3 text-xs text-orange-700 dark:text-orange-400">
+                  <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded-xl p-3 text-xs text-indigo-700 dark:text-indigo-400">
                     ⚠️ Theo quy định, sinh viên không được nghỉ quá <strong>20% số tiết</strong> mỗi môn. Nghỉ có phép được xét riêng.
                   </div>
 
                   <button
                     type="submit"
                     disabled={loading || !form.classId || !form.date}
-                    className="w-full bg-orange-500 hover:bg-orange-600 disabled:bg-orange-300 text-white font-medium py-3 rounded-xl text-sm transition-colors"
+                    className="w-full bg-indigo-500 hover:bg-indigo-600 disabled:bg-indigo-300 text-white font-medium py-3 rounded-xl text-sm transition-colors"
                   >
                     {loading ? 'Đang gửi...' : '📤 Gửi đơn xin nghỉ'}
                   </button>
@@ -204,7 +204,7 @@ export default function LeaveModal({ user, onClose }) {
             <div className="space-y-3">
               {myLeaves === null && (
                 <div className="flex justify-center py-8">
-                  <div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
+                  <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
                 </div>
               )}
               {myLeaves?.length === 0 && (
