@@ -1,5 +1,5 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react';
-import { Camera, RotateCcw, Check, X, Loader, MapPin, AlertTriangle, Map } from 'lucide-react';
+import { Camera, RotateCcw, Check, X, Loader, MapPin, AlertTriangle, Navigation } from 'lucide-react';
 import { attendanceAPI } from '../services/api';
 import GeofenceMap from './GeofenceMap';
 
@@ -181,7 +181,7 @@ export default function AttendanceModal({ classId, onClose, onSuccess }) {
               onClick={() => setShowMap(true)}
               className="flex-none bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 px-4 rounded-xl font-medium flex items-center gap-2 transition-colors"
             >
-              <Map size={18} /> Bản đồ
+              <Navigation size={18} /> Bản đồ
             </button>
             <button
               onClick={() => setStep('camera')}
@@ -214,7 +214,7 @@ export default function AttendanceModal({ classId, onClose, onSuccess }) {
               onClick={() => setShowMap(true)}
               className="flex-none bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 px-4 rounded-xl font-medium flex items-center gap-2 transition-colors"
             >
-              <Map size={18} /> Bản đồ
+              <Navigation size={18} /> Bản đồ
             </button>
             <button
               onClick={getGPS}

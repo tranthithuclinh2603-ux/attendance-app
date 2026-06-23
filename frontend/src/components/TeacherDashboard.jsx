@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { RefreshCw, Download, Users, CheckCircle, Clock, XCircle, AlertTriangle, Search, BarChart2, FileText, PlusCircle, QrCode, Upload } from 'lucide-react';
+import { RefreshCw, Download, Users, CheckCircle, Clock, XCircle, AlertTriangle, Search, BarChart2, FileText, PlusCircle, Grid, Upload } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -318,7 +318,7 @@ export default function TeacherDashboard({ user, onLogout, onUpdateUser }) {
               onClick={() => setShowQR(true)}
               className="flex items-center gap-2 bg-purple-500 hover:bg-purple-600 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
             >
-              <QrCode size={16} /> QR
+              <Grid size={16} /> QR
             </button>
           </div>
         </div>
