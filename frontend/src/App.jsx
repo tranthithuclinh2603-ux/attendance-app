@@ -6,6 +6,8 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import StudentPage from './pages/StudentPage';
 import TeacherPage from './pages/TeacherPage';
 import QRCheckinPage from './pages/QRCheckinPage';
+import AdminDashboard from './components/AdminDashboard';
+import ParentDashboard from './components/ParentDashboard';
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -17,7 +19,6 @@ export default function App() {
     if (stored && token) {
       try { setUser(JSON.parse(stored)); } catch {}
     }
-    // Apply saved dark mode
     if (localStorage.getItem('darkMode') === 'true') {
       document.documentElement.classList.add('dark');
     }
@@ -43,6 +44,16 @@ export default function App() {
     localStorage.setItem('user', JSON.stringify(updated));
   };
 
+  const defaultRoute = () => {
+    if (!user) return '/login';
+    switch (user.role) {
+      case 'teacher': return '/teacher';
+      case 'admin':   return '/admin';
+      case 'parent':  return '/parent';
+      default:        return '/student';
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center dark:bg-gray-900">
@@ -59,11 +70,10 @@ export default function App() {
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/student" element={<StudentPage user={user} onLogout={handleLogout} onUpdateUser={handleUpdateUser} />} />
         <Route path="/teacher" element={<TeacherPage user={user} onLogout={handleLogout} onUpdateUser={handleUpdateUser} />} />
+        <Route path="/admin" element={<AdminDashboard user={user} onLogout={handleLogout} />} />
+        <Route path="/parent" element={<ParentDashboard user={user} onLogout={handleLogout} />} />
         <Route path="/qr" element={<QRCheckinPage />} />
-        <Route
-          path="/"
-          element={user ? <Navigate to={user.role === 'teacher' ? '/teacher' : '/student'} /> : <Navigate to="/login" />}
-        />
+        <Route path="/" element={<Navigate to={defaultRoute()} />} />
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </BrowserRouter>

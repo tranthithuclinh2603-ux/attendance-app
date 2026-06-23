@@ -8,11 +8,11 @@ const CLASSES = ['CĐTMDT28A','CĐTMDT28B','CĐTMDT28C','CĐTMDT28D','CĐTMDT28E
 export default function RegisterPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const initRole = searchParams.get('role') === 'teacher' ? 'teacher' : 'student';
+  const initRole = searchParams.get('role') || 'student';
 
   const [role, setRole] = useState(initRole);
   const [form, setForm] = useState({
-    name: '', email: '', mssv: '', classId: CLASSES[0], password: '', confirmPassword: '',
+    name: '', email: '', mssv: '', classId: CLASSES[0], childMssv: '', password: '', confirmPassword: '',
   });
   const [errors, setErrors] = useState({});
   const [apiError, setApiError] = useState('');
@@ -28,6 +28,9 @@ export default function RegisterPage() {
     if (role === 'student') {
       if (!form.mssv) e.mssv = 'MSSV là bắt buộc';
       else if (!/^\d{7}$/.test(form.mssv)) e.mssv = 'MSSV gồm đúng 7 số';
+    }
+    if (role === 'parent') {
+      if (!form.childMssv) e.childMssv = 'MSSV của con là bắt buộc';
     }
     if (!form.password) e.password = 'Mật khẩu là bắt buộc';
     else if (form.password.length < 6) e.password = 'Mật khẩu tối thiểu 6 ký tự';
@@ -53,6 +56,8 @@ export default function RegisterPage() {
       if (role === 'student') {
         payload.mssv = form.mssv;
         payload.classId = form.classId;
+      } else if (role === 'parent') {
+        payload.childMssv = form.childMssv;
       }
       await authAPI.register(payload);
       setSuccess('Đăng ký thành công! Chuyển sang trang đăng nhập...');
@@ -73,7 +78,7 @@ export default function RegisterPage() {
           </div>
           <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Đăng ký tài khoản</h1>
           <p className="text-gray-500 text-sm mt-1">
-            {role === 'teacher' ? 'Tài khoản giảng viên' : 'Sinh viên mới'}
+            {role === 'teacher' ? 'Tài khoản giảng viên' : role === 'parent' ? 'Cổng thông tin phụ huynh' : 'Sinh viên mới'}
           </p>
         </div>
 
@@ -87,6 +92,7 @@ export default function RegisterPage() {
           >
             <option value="student">🎓 Sinh viên</option>
             <option value="teacher">👩‍🏫 Giảng viên</option>
+            <option value="parent">👨‍👩‍👧 Phụ huynh</option>
           </select>
         </div>
 
@@ -129,6 +135,22 @@ export default function RegisterPage() {
             />
             {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
           </div>
+
+          {/* Parent-only: childMssv */}
+          {role === 'parent' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">MSSV của con (7 số)</label>
+              <input
+                type="text"
+                name="childMssv"
+                value={form.childMssv}
+                onChange={handleChange}
+                placeholder="2404001"
+                className={`w-full border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white ${errors.childMssv ? 'border-red-400' : 'border-gray-300'}`}
+              />
+              {errors.childMssv && <p className="text-red-500 text-xs mt-1">{errors.childMssv}</p>}
+            </div>
+          )}
 
           {/* Student-only fields */}
           {role === 'student' && (

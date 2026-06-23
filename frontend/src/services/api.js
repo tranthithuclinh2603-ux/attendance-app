@@ -51,6 +51,26 @@ export const attendanceAPI = {
   qrCheckin: (data) => API.post('/attendance/qr-checkin', data),
 };
 
+// WebAuthn & Face
+export const biometricAPI = {
+  saveWebAuthn: (data) => API.post('/auth/webauthn', data),
+  loginWebAuthn: (data) => API.post('/auth/login-webauthn', data),
+  saveFace: (data) => API.post('/auth/face', data),
+  getMyFace: () => API.get('/auth/face'),
+};
+
+// Admin
+export const adminAPI = {
+  getStats: () => API.get('/admin/stats'),
+  getUsers: () => API.get('/admin/users'),
+};
+
+// Parent
+export const parentAPI = {
+  getChild: () => API.get('/parent/child'),
+  getChildAttendance: () => API.get('/parent/child/attendance'),
+};
+
 // Leave (Xin nghỉ phép)
 export const leaveAPI = {
   submit: (data) => API.post('/leave', data),

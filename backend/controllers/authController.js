@@ -35,8 +35,17 @@ const register = async (req, res) => {
     if (role === 'student') {
       userData.mssv = mssv;
       userData.classId = classId || '';
-    } else {
-      userData.teachingClasses = teachingClasses || ['ATTT1', 'ATTT2'];
+    } else if (role === 'parent') {
+      // Phụ huynh: tìm sinh viên theo MSSV để liên kết
+      const { childMssv } = req.body;
+      if (childMssv) {
+        const studentSnap = await db.ref('users').orderByChild('mssv').equalTo(childMssv).once('value');
+        if (studentSnap.exists()) {
+          studentSnap.forEach((c) => { userData.linkedStudentId = c.key; });
+        }
+      }
+    } else if (role === 'teacher') {
+      userData.teachingClasses = teachingClasses || [];
     }
 
     await db.ref(`users/${uid}`).set(userData);
@@ -79,7 +88,7 @@ const login = async (req, res) => {
     }
 
     const token = jwt.sign(
-      { uid, email, role: userData.role, name: userData.name },
+      { uid, email, role: userData.role, name: userData.name, linkedStudentId: userData.linkedStudentId || null },
       process.env.JWT_SECRET,
       { expiresIn: '24h' }
     );
@@ -96,6 +105,7 @@ const login = async (req, res) => {
         mssv: userData.mssv || null,
         teachingClasses: userData.teachingClasses || null,
         avatar: userData.avatar || null,
+        linkedStudentId: userData.linkedStudentId || null,
       },
     });
   } catch (error) {
@@ -214,4 +224,78 @@ const bulkRegister = async (req, res) => {
   }
 };
 
-module.exports = { register, login, resetPassword, updateProfile, updateAvatar, updateClass, bulkRegister };
+// WebAuthn: lưu credential ID
+const saveWebAuthnCredential = async (req, res) => {
+  try {
+    const { uid } = req.user;
+    const { credentialId, publicKey } = req.body;
+    if (!credentialId) return res.status(400).json({ success: false, message: 'Thiếu credentialId' });
+    await db.ref(`users/${uid}/webauthn`).set({ credentialId, publicKey: publicKey || '', registeredAt: new Date().toISOString() });
+    res.json({ success: true, message: 'Đã đăng ký xác thực sinh trắc học' });
+  } catch (err) {
+    console.error('WebAuthn save error:', err);
+    res.status(500).json({ success: false, message: 'Lỗi server' });
+  }
+};
+
+// WebAuthn: đăng nhập bằng credentialId (client đã xác thực xong)
+const loginWebAuthn = async (req, res) => {
+  try {
+    const { credentialId } = req.body;
+    if (!credentialId) return res.status(400).json({ success: false, message: 'Thiếu thông tin' });
+
+    // Tìm user có credentialId này
+    const snap = await db.ref('users').once('value');
+    let uid = null, userData = null;
+    snap.forEach((c) => {
+      const u = c.val();
+      if (u.webauthn?.credentialId === credentialId) { uid = c.key; userData = u; }
+    });
+
+    if (!uid) return res.status(401).json({ success: false, message: 'Không tìm thấy tài khoản' });
+
+    const token = jwt.sign(
+      { uid, email: userData.email, role: userData.role, name: userData.name, linkedStudentId: userData.linkedStudentId || null },
+      process.env.JWT_SECRET, { expiresIn: '24h' }
+    );
+
+    res.json({
+      success: true, token,
+      user: { id: uid, name: userData.name, email: userData.email, role: userData.role,
+        classId: userData.classId || null, mssv: userData.mssv || null,
+        avatar: userData.avatar || null, teachingClasses: userData.teachingClasses || null },
+    });
+  } catch (err) {
+    console.error('WebAuthn login error:', err);
+    res.status(500).json({ success: false, message: 'Lỗi server' });
+  }
+};
+
+// Face: lưu descriptors khuôn mặt
+const saveFaceDescriptors = async (req, res) => {
+  try {
+    const { uid } = req.user;
+    const { descriptors, enrolledAt } = req.body; // descriptors: mảng Float32Array serialized
+    if (!descriptors || !descriptors.length) return res.status(400).json({ success: false, message: 'Thiếu dữ liệu khuôn mặt' });
+    await db.ref(`users/${uid}/faceData`).set({ descriptors, enrolledAt: enrolledAt || new Date().toISOString() });
+    res.json({ success: true, message: `Đã đăng ký ${descriptors.length} mẫu khuôn mặt` });
+  } catch (err) {
+    console.error('Face save error:', err);
+    res.status(500).json({ success: false, message: 'Lỗi server' });
+  }
+};
+
+// Face: lấy descriptors của user hiện tại
+const getMyFaceDescriptors = async (req, res) => {
+  try {
+    const { uid } = req.user;
+    const snap = await db.ref(`users/${uid}/faceData`).once('value');
+    if (!snap.exists()) return res.json({ success: true, enrolled: false });
+    res.json({ success: true, enrolled: true, faceData: snap.val() });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Lỗi server' });
+  }
+};
+
+module.exports = { register, login, resetPassword, updateProfile, updateAvatar, updateClass, bulkRegister,
+  saveWebAuthnCredential, loginWebAuthn, saveFaceDescriptors, getMyFaceDescriptors };

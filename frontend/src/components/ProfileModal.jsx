@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
-import { X, Mail, BookOpen, GraduationCap, Edit2, Check, Camera } from 'lucide-react';
-import { authAPI } from '../services/api';
+import { X, Mail, BookOpen, GraduationCap, Edit2, Check, Camera, Fingerprint } from 'lucide-react';
+import { authAPI, biometricAPI } from '../services/api';
 
 const CLASSES = ['CĐTMDT28A','CĐTMDT28B','CĐTMDT28C','CĐTMDT28D','CĐTMDT28E','CĐTMDT28F','CĐTMDT28G','CĐTMDT28H','CĐTMDT28I'];
 
@@ -37,6 +37,8 @@ export default function ProfileModal({ user, onClose, onUpdateName, onUpdateAvat
   const [selectedClass, setSelectedClass] = useState(user?.classId || '');
   const [saving, setSaving] = useState(false);
   const [savingClass, setSavingClass] = useState(false);
+  const [bioStatus, setBioStatus] = useState(''); // '' | 'loading' | 'ok' | 'err'
+  const [bioMsg, setBioMsg] = useState('');
   const [avatarLoading, setAvatarLoading] = useState(false);
   const [msg, setMsg] = useState('');
   const [localAvatar, setLocalAvatar] = useState(user?.avatar || null);
@@ -59,6 +61,31 @@ export default function ProfileModal({ user, onClose, onUpdateName, onUpdateAvat
       showMsg('❌ Cập nhật thất bại', false);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const registerWebAuthn = async () => {
+    if (!window.PublicKeyCredential) { setBioMsg('Thiết bị không hỗ trợ sinh trắc học.'); setBioStatus('err'); return; }
+    setBioStatus('loading'); setBioMsg('');
+    try {
+      const challenge = new Uint8Array(32);
+      crypto.getRandomValues(challenge);
+      const userId = new TextEncoder().encode(user?.id || 'user');
+      const credential = await navigator.credentials.create({
+        publicKey: {
+          challenge, rp: { name: 'Điểm Danh App', id: window.location.hostname },
+          user: { id: userId, name: user?.email || '', displayName: user?.name || '' },
+          pubKeyCredParams: [{ alg: -7, type: 'public-key' }, { alg: -257, type: 'public-key' }],
+          timeout: 60000, attestation: 'none',
+          authenticatorSelection: { userVerification: 'required', residentKey: 'preferred' },
+        },
+      });
+      const credentialId = btoa(String.fromCharCode(...new Uint8Array(credential.rawId)));
+      await biometricAPI.saveWebAuthn({ credentialId });
+      setBioStatus('ok'); setBioMsg('Đã đăng ký sinh trắc học thành công!');
+    } catch (err) {
+      setBioStatus('err');
+      setBioMsg(err.name === 'NotAllowedError' ? 'Xác thực bị từ chối.' : err.response?.data?.message || 'Lỗi đăng ký sinh trắc học.');
     }
   };
 
@@ -234,6 +261,23 @@ export default function ProfileModal({ user, onClose, onUpdateName, onUpdateAvat
                 )}
               </div>
             </>
+          )}
+
+          {/* WebAuthn */}
+          {window.PublicKeyCredential && (
+            <div className="border-t dark:border-gray-700 pt-4 mt-2">
+              <button
+                onClick={registerWebAuthn}
+                disabled={bioStatus === 'loading'}
+                className="w-full border border-gray-200 dark:border-gray-600 hover:border-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 text-gray-600 dark:text-gray-300 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-colors disabled:opacity-60"
+              >
+                <Fingerprint size={18} className="text-indigo-500" />
+                {bioStatus === 'loading' ? 'Đang đăng ký...' : 'Đăng ký sinh trắc học'}
+              </button>
+              {bioMsg && (
+                <p className={`text-xs mt-1.5 text-center ${bioStatus === 'ok' ? 'text-green-500' : 'text-red-500'}`}>{bioMsg}</p>
+              )}
+            </div>
           )}
 
           <button

@@ -4,6 +4,8 @@ const cors = require('cors');
 const authRoutes = require('./routes/auth');
 const attendanceRoutes = require('./routes/attendance');
 const leaveRoutes = require('./routes/leave');
+const adminRoutes = require('./routes/admin');
+const parentRoutes = require('./routes/parent');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -15,6 +17,8 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use('/api/auth', authRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/leave', leaveRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/parent', parentRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'Attendance API is running', time: new Date().toISOString() });

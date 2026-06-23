@@ -26,4 +26,22 @@ const verifyTeacher = (req, res, next) => {
   });
 };
 
-module.exports = { verifyToken, verifyTeacher };
+const verifyAdmin = (req, res, next) => {
+  verifyToken(req, res, () => {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Admin access required' });
+    }
+    next();
+  });
+};
+
+const verifyParent = (req, res, next) => {
+  verifyToken(req, res, () => {
+    if (!['parent', 'admin'].includes(req.user.role)) {
+      return res.status(403).json({ success: false, message: 'Parent access required' });
+    }
+    next();
+  });
+};
+
+module.exports = { verifyToken, verifyTeacher, verifyAdmin, verifyParent };

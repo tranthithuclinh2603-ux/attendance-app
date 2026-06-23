@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { GraduationCap, Eye, EyeOff, AlertCircle } from 'lucide-react';
-import { authAPI } from '../services/api';
+import { GraduationCap, Eye, EyeOff, AlertCircle, Fingerprint } from 'lucide-react';
+import { authAPI, biometricAPI } from '../services/api';
 
 export default function LoginForm({ onLogin }) {
   const navigate = useNavigate();
@@ -11,6 +11,7 @@ export default function LoginForm({ onLogin }) {
   const [apiError, setApiError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [bioLoading, setBioLoading] = useState(false);
 
   const validate = () => {
     const e = {};
@@ -38,13 +39,60 @@ export default function LoginForm({ onLogin }) {
       localStorage.setItem('token', res.data.token);
       localStorage.setItem('user', JSON.stringify(res.data.user));
       onLogin?.(res.data.user);
-      navigate(res.data.user.role === 'teacher' ? '/teacher' : '/student');
+      const r = res.data.user.role;
+      navigate(r === 'teacher' ? '/teacher' : r === 'admin' ? '/admin' : r === 'parent' ? '/parent' : '/student');
     } catch (err) {
       setApiError(err.response?.data?.message || 'Đăng nhập thất bại');
     } finally {
       setLoading(false);
     }
   };
+
+  const handleBiometric = async () => {
+    if (!window.PublicKeyCredential) {
+      setApiError('Thiết bị của bạn không hỗ trợ xác thực sinh trắc học.');
+      return;
+    }
+    setBioLoading(true);
+    setApiError('');
+    try {
+      const challenge = new Uint8Array(32);
+      crypto.getRandomValues(challenge);
+
+      const credential = await navigator.credentials.get({
+        publicKey: {
+          challenge,
+          timeout: 60000,
+          userVerification: 'required',
+          rpId: window.location.hostname,
+        },
+      });
+
+      const credentialId = btoa(String.fromCharCode(...new Uint8Array(credential.rawId)));
+      const res = await biometricAPI.loginWebAuthn({ credentialId });
+      localStorage.setItem('token', res.data.token);
+      localStorage.setItem('user', JSON.stringify(res.data.user));
+      onLogin?.(res.data.user);
+      const r = res.data.user.role;
+      navigate(r === 'teacher' ? '/teacher' : r === 'admin' ? '/admin' : r === 'parent' ? '/parent' : '/student');
+    } catch (err) {
+      if (err.name === 'NotAllowedError') {
+        setApiError('Xác thực bị từ chối. Thử lại hoặc dùng mật khẩu.');
+      } else {
+        setApiError(err.response?.data?.message || 'Không thể xác thực sinh trắc học.');
+      }
+    } finally {
+      setBioLoading(false);
+    }
+  };
+
+  const subtitle = role === 'teacher'
+    ? 'Hệ thống điểm danh giảng viên'
+    : role === 'admin'
+    ? 'Quản trị viên hệ thống'
+    : role === 'parent'
+    ? 'Cổng thông tin phụ huynh'
+    : 'Hệ thống điểm danh sinh viên';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center p-4">
@@ -55,9 +103,7 @@ export default function LoginForm({ onLogin }) {
             <GraduationCap className="text-blue-600" size={32} />
           </div>
           <h1 className="text-2xl font-bold text-gray-800">Đăng nhập</h1>
-          <p className="text-gray-500 text-sm mt-1">
-            {role === 'teacher' ? 'Hệ thống điểm danh giảng viên' : 'Hệ thống điểm danh sinh viên'}
-          </p>
+          <p className="text-gray-500 text-sm mt-1">{subtitle}</p>
         </div>
 
         {/* Role selector */}
@@ -70,6 +116,8 @@ export default function LoginForm({ onLogin }) {
           >
             <option value="student">Sinh viên</option>
             <option value="teacher">Giảng viên</option>
+            <option value="parent">Phụ huynh</option>
+            <option value="admin">Quản trị viên</option>
           </select>
         </div>
 
@@ -131,10 +179,22 @@ export default function LoginForm({ onLogin }) {
           </button>
         </form>
 
+        {/* Biometric login */}
+        {window.PublicKeyCredential && (
+          <button
+            onClick={handleBiometric}
+            disabled={bioLoading}
+            className="mt-3 w-full border border-gray-200 hover:border-blue-300 hover:bg-blue-50 text-gray-600 font-medium py-2.5 rounded-lg transition-colors text-sm flex items-center justify-center gap-2 disabled:opacity-60"
+          >
+            <Fingerprint size={18} className="text-blue-500" />
+            {bioLoading ? 'Đang xác thực...' : 'Đăng nhập bằng sinh trắc học'}
+          </button>
+        )}
+
         <p className="text-center text-sm text-gray-500 mt-5">
           Chưa có tài khoản?{' '}
           <Link
-            to={role === 'teacher' ? '/register?role=teacher' : '/register'}
+            to={role === 'teacher' ? '/register?role=teacher' : role === 'parent' ? '/register?role=parent' : '/register'}
             className="text-blue-500 hover:underline font-medium"
           >
             Đăng ký ở đây
