@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { Trash2, Edit2, Check, X } from 'lucide-react';
+import { Trash2, Edit2 } from 'lucide-react';
 import { attendanceAPI } from '../services/api';
 
 const STATUS_CONFIG = {
-  present: { label: 'Có mặt', icon: '✅', color: 'text-green-600 bg-green-50' },
-  late: { label: 'Muộn', icon: '⏰', color: 'text-yellow-600 bg-yellow-50' },
-  absent: { label: 'Vắng', icon: '❌', color: 'text-red-600 bg-red-50' },
+  present: { label: 'Có mặt', icon: '✅', color: 'text-green-600 bg-green-50 dark:bg-green-900/30 dark:text-green-400' },
+  late:    { label: 'Muộn',   icon: '⏰', color: 'text-yellow-600 bg-yellow-50 dark:bg-yellow-900/30 dark:text-yellow-400' },
+  absent:  { label: 'Vắng',   icon: '❌', color: 'text-red-600 bg-red-50 dark:bg-red-900/30 dark:text-red-400' },
+  excused: { label: 'Có phép',icon: '📋', color: 'text-indigo-600 bg-indigo-50 dark:bg-indigo-900/30 dark:text-indigo-400' },
 };
 
 function EditModal({ record, onSave, onClose }) {
@@ -27,19 +28,20 @@ function EditModal({ record, onSave, onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
-        <h3 className="font-semibold text-gray-800 mb-4">Cập nhật trạng thái - {record.name}</h3>
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-sm p-6">
+        <h3 className="font-semibold text-gray-800 dark:text-white mb-4">Cập nhật trạng thái - {record.name}</h3>
         <select
           value={status}
           onChange={(e) => setStatus(e.target.value)}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2.5 mb-5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-3 py-2.5 mb-5 focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="present">✅ Có mặt</option>
           <option value="late">⏰ Muộn</option>
           <option value="absent">❌ Vắng</option>
+          <option value="excused">📋 Có phép</option>
         </select>
         <div className="flex gap-3">
-          <button onClick={onClose} className="flex-1 bg-gray-100 hover:bg-gray-200 py-2.5 rounded-xl text-sm font-medium transition-colors">
+          <button onClick={onClose} className="flex-1 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 dark:text-white py-2.5 rounded-xl text-sm font-medium transition-colors">
             Hủy
           </button>
           <button
@@ -76,14 +78,14 @@ export default function AttendanceTable({ data, onRefresh }) {
   };
 
   if (!records.length) {
-    return <div className="py-10 text-center text-gray-400">Không có dữ liệu điểm danh</div>;
+    return <div className="py-10 text-center text-gray-400 dark:text-gray-500">Không có dữ liệu điểm danh</div>;
   }
 
   return (
     <>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 text-gray-500 uppercase text-xs">
+          <thead className="bg-gray-50 dark:bg-gray-700/50 text-gray-500 dark:text-gray-400 uppercase text-xs">
             <tr>
               <th className="px-4 py-3 text-left">STT</th>
               <th className="px-4 py-3 text-left">Tên</th>
@@ -93,32 +95,32 @@ export default function AttendanceTable({ data, onRefresh }) {
               <th className="px-4 py-3 text-left">Hành động</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
+          <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
             {records.map((item, i) => {
               const s = STATUS_CONFIG[item.status] || STATUS_CONFIG.absent;
               return (
-                <tr key={item.uid || i} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 text-gray-500">{i + 1}</td>
-                  <td className="px-4 py-3 font-medium text-gray-800">{item.name}</td>
-                  <td className="px-4 py-3 text-gray-600">{item.studentId}</td>
+                <tr key={item.uid || i} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                  <td className="px-4 py-3 text-gray-500 dark:text-gray-400">{i + 1}</td>
+                  <td className="px-4 py-3 font-medium text-gray-800 dark:text-white">{item.name}</td>
+                  <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{item.studentId}</td>
                   <td className="px-4 py-3">
                     <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${s.color}`}>
                       {s.icon} {s.label}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-gray-600">{item.time}</td>
+                  <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{item.time}</td>
                   <td className="px-4 py-3">
                     <div className="flex gap-2">
                       <button
                         onClick={() => setEditRecord(item)}
-                        className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"
+                        className="p-1.5 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
                         title="Sửa"
                       >
                         <Edit2 size={15} />
                       </button>
                       <button
                         onClick={() => handleDelete(item)}
-                        className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                        className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"
                         title="Xóa"
                       >
                         <Trash2 size={15} />

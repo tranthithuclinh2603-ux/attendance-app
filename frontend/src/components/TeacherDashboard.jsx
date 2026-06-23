@@ -274,31 +274,31 @@ export default function TeacherDashboard({ user, onLogout, onUpdateUser }) {
         </div>
 
         {/* Controls */}
-        <div className="bg-white rounded-2xl shadow-sm p-5 flex flex-wrap gap-4 items-end">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5 flex flex-wrap gap-4 items-end">
           <div className="flex-1 min-w-[140px]">
-            <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase">Lớp học</label>
+            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5 uppercase">Lớp học</label>
             <select
               value={selectedClass}
               onChange={(e) => setSelectedClass(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               {CLASSES.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
           <div className="flex-1 min-w-[140px]">
-            <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase">Ngày</label>
+            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5 uppercase">Ngày</label>
             <input
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
           <div className="flex gap-2">
             <button
               onClick={fetchData}
               disabled={loading}
-              className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
+              className="flex items-center gap-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 dark:text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
             >
               <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
               Làm mới
@@ -332,12 +332,12 @@ export default function TeacherDashboard({ user, onLogout, onUpdateUser }) {
             { label: 'Muộn', value: stats.late, Icon: Clock, color: 'yellow', pctVal: pct(stats.late) },
             { label: 'Vắng', value: stats.absent, Icon: XCircle, color: 'red', pctVal: pct(stats.absent) },
           ].map(({ label, value, Icon, color, pctVal }) => (
-            <div key={label} className="bg-white rounded-2xl shadow-sm p-4">
-              <div className={`w-10 h-10 rounded-xl bg-${color}-100 flex items-center justify-center mb-3`}>
+            <div key={label} className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-4">
+              <div className={`w-10 h-10 rounded-xl bg-${color}-100 dark:bg-${color}-900/30 flex items-center justify-center mb-3`}>
                 <Icon size={20} className={`text-${color}-500`} />
               </div>
-              <p className="text-2xl font-bold text-gray-800">{value}</p>
-              <p className="text-gray-500 text-sm">{label}</p>
+              <p className="text-2xl font-bold text-gray-800 dark:text-white">{value}</p>
+              <p className="text-gray-500 dark:text-gray-400 text-sm">{label}</p>
               <div className={`mt-2 h-1.5 rounded-full bg-${color}-100`}>
                 <div className={`h-1.5 rounded-full bg-${color}-400`} style={{ width: `${pctVal}%` }} />
               </div>
@@ -347,8 +347,8 @@ export default function TeacherDashboard({ user, onLogout, onUpdateUser }) {
         </div>
 
         {/* Tabs */}
-        <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-          <div className="flex border-b">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm overflow-hidden">
+          <div className="flex border-b dark:border-gray-700">
             {[
               { key: 'list', label: '📋 Danh sách' },
               { key: 'alerts', label: '⚠️ Cảnh báo' },
@@ -361,8 +361,8 @@ export default function TeacherDashboard({ user, onLogout, onUpdateUser }) {
                 onClick={() => setActiveTab(key)}
                 className={`flex-1 py-3.5 text-xs sm:text-sm font-medium transition-colors ${
                   activeTab === key
-                    ? 'text-blue-600 border-b-2 border-blue-500 bg-blue-50/50'
-                    : 'text-gray-500 hover:text-gray-700'
+                    ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-500 bg-blue-50/50 dark:bg-blue-900/20'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
                 }`}
               >
                 {label}
@@ -373,7 +373,7 @@ export default function TeacherDashboard({ user, onLogout, onUpdateUser }) {
           {/* List tab */}
           {activeTab === 'list' && (
             <>
-              <div className="px-5 py-3 border-b flex items-center gap-3">
+              <div className="px-5 py-3 border-b dark:border-gray-700 flex items-center gap-3">
                 <div className="relative flex-1">
                   <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                   <input
@@ -396,7 +396,7 @@ export default function TeacherDashboard({ user, onLogout, onUpdateUser }) {
                 )}
               </div>
               {loading ? (
-                <div className="py-12 text-center text-gray-400">Đang tải dữ liệu...</div>
+                <div className="py-12 text-center text-gray-400 dark:text-gray-500">Đang tải dữ liệu...</div>
               ) : (
                 <AttendanceTable data={filteredData} onRefresh={fetchData} />
               )}
@@ -406,8 +406,8 @@ export default function TeacherDashboard({ user, onLogout, onUpdateUser }) {
           {/* Alerts tab */}
           {activeTab === 'alerts' && (
             <>
-              <div className="px-5 py-3 border-b bg-yellow-50">
-                <p className="text-xs text-yellow-700 font-medium">⚠️ Sinh viên vắng 2+ buổi liên tiếp trong 14 ngày gần nhất</p>
+              <div className="px-5 py-3 border-b dark:border-gray-700 bg-yellow-50 dark:bg-yellow-900/20">
+                <p className="text-xs text-yellow-700 dark:text-yellow-400 font-medium">⚠️ Sinh viên vắng 2+ buổi liên tiếp trong 14 ngày gần nhất</p>
               </div>
               <AlertsPanel classId={selectedClass} />
             </>
