@@ -271,14 +271,27 @@ const loginWebAuthn = async (req, res) => {
   }
 };
 
-// Face: lưu descriptors khuôn mặt
+// Face: lưu ảnh khuôn mặt (đăng ký) hoặc descriptors (cache từ check-in)
 const saveFaceDescriptors = async (req, res) => {
   try {
     const { uid } = req.user;
-    const { descriptors, enrolledAt } = req.body; // descriptors: mảng Float32Array serialized
-    if (!descriptors || !descriptors.length) return res.status(400).json({ success: false, message: 'Thiếu dữ liệu khuôn mặt' });
-    await db.ref(`users/${uid}/faceData`).set({ descriptors, enrolledAt: enrolledAt || new Date().toISOString() });
-    res.json({ success: true, message: `Đã đăng ký ${descriptors.length} mẫu khuôn mặt` });
+    const { descriptors, images, enrolledAt } = req.body;
+    const data = { enrolledAt: enrolledAt || new Date().toISOString() };
+    if (images && images.length) {
+      // Lưu ảnh gốc (đăng ký nhanh, không cần model)
+      data.images = images;
+      data.type = 'images';
+      await db.ref(`users/${uid}/faceData`).set(data);
+      return res.json({ success: true, message: `Đã lưu ${images.length} ảnh khuôn mặt` });
+    }
+    if (descriptors && descriptors.length) {
+      // Lưu/cập nhật descriptors (cache sau lần check-in đầu tiên)
+      data.descriptors = descriptors;
+      data.type = 'descriptors';
+      await db.ref(`users/${uid}/faceData`).update(data);
+      return res.json({ success: true, message: `Đã lưu ${descriptors.length} mẫu nhận diện` });
+    }
+    return res.status(400).json({ success: false, message: 'Thiếu dữ liệu khuôn mặt' });
   } catch (err) {
     console.error('Face save error:', err);
     res.status(500).json({ success: false, message: 'Lỗi server' });

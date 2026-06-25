@@ -1,7 +1,7 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react';
 import { Camera, RotateCcw, Check, X, Loader, MapPin, AlertTriangle, Navigation, ShieldCheck, ShieldX } from 'lucide-react';
 import { attendanceAPI, biometricAPI } from '../services/api';
-import { loadFaceModels, detectFaceDescriptor, matchDescriptor } from '../utils/faceUtils';
+import { loadFaceModels, detectFaceDescriptor, matchDescriptor, extractDescriptorFromBase64 } from '../utils/faceUtils';
 import GeofenceMap from './GeofenceMap';
 
 const SCHOOL_LOCATION = {
@@ -85,18 +85,46 @@ export default function AttendanceModal({ classId, onClose, onSuccess }) {
   // ── Chuyển sang camera: tải model + lấy face data ───
   const proceedToCamera = async () => {
     setStep('loadingFace');
-    setFaceMsg('Đang tải model nhận diện...');
     try {
-      await loadFaceModels((msg) => setFaceMsg(msg));
-      // Fetch stored face descriptors
       const res = await biometricAPI.getMyFace();
-      if (res.data.enrolled && res.data.faceData?.descriptors?.length) {
-        setStoredDescriptors(res.data.faceData.descriptors);
-      } else {
-        setStoredDescriptors([]); // không có dữ liệu → vẫn cho điểm danh nhưng bỏ qua nhận diện
+      const faceData = res.data.enrolled ? res.data.faceData : null;
+
+      if (!faceData) {
+        // Chưa đăng ký khuôn mặt → bỏ qua nhận diện
+        setStoredDescriptors([]);
+        setStep('camera');
+        return;
       }
+
+      if (faceData.descriptors?.length) {
+        // Đã có descriptor cached → dùng trực tiếp, không cần tải model trước
+        setStoredDescriptors(faceData.descriptors);
+        setStep('camera');
+        return;
+      }
+
+      if (faceData.images?.length) {
+        // Lần đầu check-in sau khi đăng ký ảnh → tải model + trích xuất descriptor
+        setFaceMsg('Lần đầu: đang xử lý khuôn mặt (30s)...');
+        await loadFaceModels((msg) => setFaceMsg(msg));
+        setFaceMsg('Đang trích xuất dữ liệu sinh trắc học...');
+        const descriptors = [];
+        for (const img of faceData.images) {
+          const d = await extractDescriptorFromBase64(img);
+          if (d) descriptors.push(d);
+        }
+        if (descriptors.length) {
+          // Cache descriptors để lần sau dùng ngay không cần tải lại
+          biometricAPI.saveFace({ descriptors }).catch(() => {});
+        }
+        setStoredDescriptors(descriptors);
+        setStep('camera');
+        setFaceMsg('');
+        return;
+      }
+
+      setStoredDescriptors([]);
       setStep('camera');
-      setFaceMsg('');
     } catch {
       setFaceMsg('');
       setStoredDescriptors([]);

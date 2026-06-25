@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { GraduationCap, Eye, EyeOff, AlertCircle, CheckCircle, Upload, Camera, RotateCcw, ChevronRight } from 'lucide-react';
 import { authAPI, biometricAPI } from '../services/api';
-import { loadFaceModels, detectFaceDescriptor, resizeImage } from '../utils/faceUtils';
+import { resizeImage } from '../utils/faceUtils';
 
 function getPasswordStrength(pw) {
   if (!pw) return null;
@@ -72,7 +72,6 @@ export default function RegisterPage() {
   // Step 2: Student ID card
   const [studentIdImage, setStudentIdImage] = useState(null);
   const [idError, setIdError] = useState('');
-  const [modelPreloaded, setModelPreloaded] = useState(false);
 
   // Step 3: Face enrollment
   const videoRef = useRef(null);
@@ -137,13 +136,6 @@ export default function RegisterPage() {
   };
 
   // ── Step 2: Student ID card upload ────────────────
-  // Preload face models in background the moment step 2 is shown
-  useEffect(() => {
-    if (step === 2 && !modelPreloaded) {
-      loadFaceModels().then(() => setModelPreloaded(true)).catch(() => {});
-    }
-  }, [step, modelPreloaded]);
-
   const handleIdUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -170,25 +162,16 @@ export default function RegisterPage() {
   const startFaceEnroll = async () => {
     setFaceStep('loadingModel');
     setFaceMsg('Đang bật camera...');
-    setModelsReady(false);
     try {
-      // 1. Bật camera trước — nhanh (< 1 giây)
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'user', width: 640, height: 480 },
       });
       streamRef.current = stream;
-
-      // 2. Hiển thị video NGAY — dùng setTimeout để chờ DOM render xong
       setFaceStep('ready');
+      setModelsReady(true); // Không cần model khi đăng ký — chỉ chụp ảnh
       setTimeout(() => {
         if (videoRef.current) videoRef.current.srcObject = stream;
       }, 100);
-
-      // 3. Tải model ở nền — nếu đã preload từ bước 2 thì gần như tức thì
-      setFaceMsg('Đang tải model nhận diện...');
-      await loadFaceModels((msg) => setFaceMsg(msg));
-      setModelsReady(true);
-      setFaceMsg('');
     } catch (err) {
       setFaceStep('error');
       setFaceMsg(
@@ -199,31 +182,28 @@ export default function RegisterPage() {
     }
   };
 
-  const captureAngle = async () => {
+  const captureAngle = () => {
     setFaceStep('capturing');
-    setFaceMsg('Đang nhận diện khuôn mặt...');
     const video = videoRef.current;
     const canvas = canvasRef.current;
     canvas.width = video.videoWidth || 640;
     canvas.height = video.videoHeight || 480;
-    canvas.getContext('2d').drawImage(video, 0, 0);
-    const descriptor = await detectFaceDescriptor(canvas);
-    if (!descriptor) {
-      setFaceStep('ready');
-      setFaceMsg('Không phát hiện khuôn mặt. Hãy căn chỉnh lại và thử lại.');
-      return;
-    }
-    const newList = [...faceDescriptors, descriptor];
+    // Mirror horizontally (khớp với video đang mirror)
+    const ctx = canvas.getContext('2d');
+    ctx.translate(canvas.width, 0);
+    ctx.scale(-1, 1);
+    ctx.drawImage(video, 0, 0);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    const imgData = canvas.toDataURL('image/jpeg', 0.85);
+    const newList = [...faceDescriptors, imgData];
     setFaceDescriptors(newList);
     const count = capturedCount + 1;
     setCapturedCount(count);
     if (count >= FACE_ANGLES.length) {
       streamRef.current?.getTracks().forEach(t => t.stop());
       setFaceStep('done');
-      setFaceMsg('');
     } else {
       setFaceStep('ready');
-      setFaceMsg('');
     }
   };
 
@@ -247,9 +227,9 @@ export default function RegisterPage() {
       // 3. Save student ID card
       await biometricAPI.saveStudentId({ imageBase64: studentIdImage });
 
-      // 4. Save face descriptors
+      // 4. Save face images (descriptors generated lazily on first check-in)
       if (faceDescriptors.length > 0) {
-        await biometricAPI.saveFace({ descriptors: faceDescriptors });
+        await biometricAPI.saveFace({ images: faceDescriptors });
       }
 
       setStep(4);

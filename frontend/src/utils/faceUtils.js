@@ -1,27 +1,37 @@
 const MODEL_URL = 'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights';
 let modelsLoaded = false;
 let loading = false;
+let loadingPromise = null;
 
 export async function loadFaceModels(onProgress) {
   if (modelsLoaded) return;
-  if (loading) {
-    // Wait for the in-progress load
-    await new Promise((res) => {
-      const check = setInterval(() => { if (modelsLoaded) { clearInterval(check); res(); } }, 200);
-    });
-    return;
-  }
+  if (loading) return loadingPromise;
   loading = true;
-  const faceapi = window.faceapi;
-  if (!faceapi) throw new Error('face-api.js chưa được tải. Vui lòng tải lại trang.');
-  onProgress?.('Đang tải model phát hiện khuôn mặt (1/3)...');
-  await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
-  onProgress?.('Đang tải model điểm mốc khuôn mặt (2/3)...');
-  await faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODEL_URL);
-  onProgress?.('Đang tải model nhận diện sinh trắc học (3/3)...');
-  await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
-  modelsLoaded = true;
-  loading = false;
+  loadingPromise = (async () => {
+    const faceapi = window.faceapi;
+    if (!faceapi) throw new Error('face-api.js chưa được tải. Vui lòng tải lại trang.');
+    onProgress?.('Đang tải model (1/3)...');
+    await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+    onProgress?.('Đang tải model (2/3)...');
+    await faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODEL_URL);
+    onProgress?.('Đang tải model nhận diện (3/3)...');
+    await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+    modelsLoaded = true;
+    loading = false;
+  })();
+  return loadingPromise;
+}
+
+// Trích xuất descriptor từ ảnh base64 (dùng khi check-in)
+export async function extractDescriptorFromBase64(base64) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = async () => {
+      const descriptor = await detectFaceDescriptor(img);
+      resolve(descriptor);
+    };
+    img.src = base64;
+  });
 }
 
 export async function detectFaceDescriptor(source) {
