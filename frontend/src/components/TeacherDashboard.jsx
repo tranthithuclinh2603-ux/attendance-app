@@ -2,8 +2,6 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { RefreshCw, Download, Users, CheckCircle, Clock, XCircle, AlertTriangle, Search, BarChart2, FileText, PlusCircle, Grid, Upload } from 'lucide-react';
 import LeavePanel from './LeavePanel';
 import * as XLSX from 'xlsx';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import { attendanceAPI, authAPI } from '../services/api';
 import AttendanceTable from './AttendanceTable';
 import NavBar from './NavBar';
@@ -234,31 +232,61 @@ export default function TeacherDashboard({ user, onLogout, onUpdateUser }) {
   };
 
   const exportPDF = () => {
-    const doc = new jsPDF();
-    doc.setFontSize(16);
-    doc.text('BẢNG ĐIỂM DANH SINH VIÊN', 14, 18);
-    doc.setFontSize(11);
-    doc.text(`Lớp: ${selectedClass}   Ngày: ${selectedDate}`, 14, 28);
-    doc.text(`Trường Cao Đẳng Kinh Tế Đối Ngoại`, 14, 36);
-    doc.setFontSize(10);
-    doc.text(`Có mặt: ${stats.present} | Muộn: ${stats.late} | Vắng: ${stats.absent} | Tổng: ${stats.total}`, 14, 44);
+    const statusLabel = (s) =>
+      s === 'present' ? 'Có mặt' : s === 'late' ? 'Muộn' : 'Vắng';
 
-    autoTable(doc, {
-      startY: 50,
-      head: [['STT', 'Họ tên', 'MSSV', 'Trạng thái', 'Giờ vào']],
-      body: data.map((item, i) => [
-        i + 1,
-        item.name,
-        item.studentId,
-        item.status === 'present' ? 'Có mặt' : item.status === 'late' ? 'Muộn' : 'Vắng',
-        item.time,
-      ]),
-      styles: { font: 'helvetica', fontSize: 10 },
-      headStyles: { fillColor: [59, 130, 246] },
-      alternateRowStyles: { fillColor: [245, 247, 250] },
-    });
+    const rows = data.map((item, i) => `
+      <tr>
+        <td>${i + 1}</td>
+        <td>${item.name}</td>
+        <td>${item.studentId}</td>
+        <td class="${item.status === 'present' ? 'present' : item.status === 'late' ? 'late' : 'absent'}">${statusLabel(item.status)}</td>
+        <td>${item.time}</td>
+      </tr>`).join('');
 
-    doc.save(`Attendance_${selectedClass}_${selectedDate}.pdf`);
+    const html = `<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Bảng điểm danh - ${selectedClass} - ${selectedDate}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: Arial, sans-serif; font-size: 13px; color: #111; padding: 28px 32px; }
+    h1 { font-size: 18px; text-align: center; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 14px; }
+    .meta { font-size: 12px; margin-bottom: 4px; }
+    .stats { font-size: 12px; margin: 10px 0 16px; color: #444; }
+    table { width: 100%; border-collapse: collapse; margin-top: 4px; }
+    th { background: #3b82f6; color: #fff; padding: 9px 10px; text-align: left; font-size: 12px; }
+    td { padding: 8px 10px; border-bottom: 1px solid #e5e7eb; font-size: 12px; }
+    tr:nth-child(even) td { background: #f9fafb; }
+    .present { color: #16a34a; font-weight: 600; }
+    .late    { color: #d97706; font-weight: 600; }
+    .absent  { color: #dc2626; font-weight: 600; }
+    @media print {
+      body { padding: 16px; }
+      button { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <h1>Bảng Điểm Danh Sinh Viên</h1>
+  <p class="meta">Lớp: <strong>${selectedClass}</strong> &nbsp;&nbsp; Ngày: <strong>${selectedDate}</strong></p>
+  <p class="meta">Trường Cao Đẳng Kinh Tế Đối Ngoại</p>
+  <p class="stats">Có mặt: ${stats.present} &nbsp;|&nbsp; Muộn: ${stats.late} &nbsp;|&nbsp; Vắng: ${stats.absent} &nbsp;|&nbsp; Tổng: ${stats.total}</p>
+  <table>
+    <thead><tr><th>STT</th><th>Họ tên</th><th>MSSV</th><th>Trạng thái</th><th>Giờ vào</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+</body>
+</html>`;
+
+    const win = window.open('', '_blank');
+    win.document.write(html);
+    win.document.close();
+    // Đợi load xong rồi in
+    win.onload = () => win.print();
+    // Fallback nếu onload không fire (nội dung đồng bộ)
+    setTimeout(() => { if (!win.closed) win.print(); }, 300);
   };
 
   return (
