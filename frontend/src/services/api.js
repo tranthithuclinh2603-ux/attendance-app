@@ -72,6 +72,26 @@ export const parentAPI = {
   getChildAttendance: () => API.get('/parent/child/attendance'),
 };
 
+// Sessions (Phiên điểm danh)
+export const sessionAPI = {
+  open: (data) => API.post('/sessions', data),
+  close: (sessionId) => API.put(`/sessions/${sessionId}/close`),
+  getActive: (classId) => API.get(`/sessions/active/${classId}`),
+  getToday: (classId) => API.get(`/sessions/today/${classId}`),
+  getHistory: (classId, params) => API.get(`/sessions/history/${classId}`, { params }),
+  exportExcel: (classId, params) => API.get(`/sessions/export/${classId}`, { params, responseType: 'blob' }),
+  getAttendance: (sessionId) => API.get(`/sessions/${sessionId}/attendance`),
+  updateAttendance: (sessionId, uid, status) => API.put(`/sessions/${sessionId}/attendance/${uid}`, { status }),
+  checkin: (sessionId, data) => API.post(`/sessions/${sessionId}/checkin`, data),
+};
+
+// Timetable (Thời khóa biểu)
+export const timetableAPI = {
+  save: (classId, entries) => API.post(`/timetable/${classId}`, { entries }),
+  get: (classId) => API.get(`/timetable/${classId}`),
+  autoOpen: (classId) => API.post(`/timetable/${classId}/auto-open`),
+};
+
 // Leave (Xin nghỉ phép)
 export const leaveAPI = {
   submit: (data) => API.post('/leave', data),

@@ -1,6 +1,6 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react';
 import { Camera, RotateCcw, X, Loader, MapPin, AlertTriangle, Navigation, ShieldCheck, ShieldX, CheckCircle, XCircle, Clock } from 'lucide-react';
-import { attendanceAPI, biometricAPI } from '../services/api';
+import { attendanceAPI, biometricAPI, sessionAPI } from '../services/api';
 import { loadFaceModels, detectFaceDescriptor, matchDescriptor, extractDescriptorFromBase64, compareTwoDescriptors } from '../utils/faceUtils';
 import GeofenceMap from './GeofenceMap';
 
@@ -19,7 +19,7 @@ function getDistanceMeters(lat1, lng1, lat2, lng2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-export default function AttendanceModal({ classId, onClose, onSuccess }) {
+export default function AttendanceModal({ classId, session, onClose, onSuccess }) {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const streamRef = useRef(null);
@@ -203,14 +203,25 @@ export default function AttendanceModal({ classId, onClose, onSuccess }) {
   const submitCheckin = async (imageBase64, faceConfidence) => {
     setFaceMsg('Đang ghi nhận điểm danh...');
     try {
-      const res = await attendanceAPI.checkin({
-        classId: classId || 'DEFAULT',
-        imageBase64,
-        gpsLat: gpsData?.lat,
-        gpsLng: gpsData?.lng,
-        faceConfidence,
-        timestamp: new Date().toISOString(),
-      });
+      let res;
+      if (session?.sessionId) {
+        // Điểm danh theo phiên (session-based)
+        res = await sessionAPI.checkin(session.sessionId, {
+          imageBase64,
+          gpsLat: gpsData?.lat,
+          gpsLng: gpsData?.lng,
+        });
+      } else {
+        // Fallback: điểm danh cũ (theo ngày)
+        res = await attendanceAPI.checkin({
+          classId: classId || 'DEFAULT',
+          imageBase64,
+          gpsLat: gpsData?.lat,
+          gpsLng: gpsData?.lng,
+          faceConfidence,
+          timestamp: new Date().toISOString(),
+        });
+      }
       setResult({ success: true, message: res.data.message, status: res.data.status, faceConfidence });
     } catch (err) {
       setResult({ success: false, message: err.response?.data?.message || 'Điểm danh thất bại' });
@@ -300,7 +311,7 @@ export default function AttendanceModal({ classId, onClose, onSuccess }) {
         <div className="flex items-center justify-between px-5 py-4 border-b">
           <h2 className="font-semibold text-gray-800 flex items-center gap-2">
             {step === 'gps' ? <MapPin size={20} className="text-blue-500"/> : <Camera size={20} className="text-blue-500"/>}
-            {step === 'gps' ? 'Xác nhận vị trí' : step === 'loadingFace' ? 'Chuẩn bị...' : 'Điểm danh khuôn mặt'}
+            {step === 'gps' ? 'Xác nhận vị trí' : step === 'loadingFace' ? 'Chuẩn bị...' : session ? `${session.subject} · Ca ${session.period}` : 'Điểm danh khuôn mặt'}
           </h2>
           <div className="flex items-center gap-2">
             {/* Step indicators */}

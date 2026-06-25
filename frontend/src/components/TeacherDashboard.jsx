@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { RefreshCw, Download, Users, CheckCircle, Clock, XCircle, AlertTriangle, Search, BarChart2, FileText, PlusCircle, Grid, Upload } from 'lucide-react';
 import LeavePanel from './LeavePanel';
+import SessionPanel from './SessionPanel';
 import * as XLSX from 'xlsx';
 import { attendanceAPI, authAPI } from '../services/api';
 import AttendanceTable from './AttendanceTable';
@@ -377,6 +378,7 @@ export default function TeacherDashboard({ user, onLogout, onUpdateUser }) {
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm overflow-hidden">
           <div className="flex border-b dark:border-gray-700">
             {[
+              { key: 'sessions', label: 'Phiên học' },
               { key: 'list', label: 'Danh sách' },
               { key: 'alerts', label: 'Cảnh báo' },
               { key: 'stats', label: 'Thống kê' },
@@ -396,6 +398,13 @@ export default function TeacherDashboard({ user, onLogout, onUpdateUser }) {
               </button>
             ))}
           </div>
+
+          {/* Sessions tab */}
+          {activeTab === 'sessions' && (
+            <div className="p-4">
+              <SessionPanel classId={selectedClass} />
+            </div>
+          )}
 
           {/* List tab */}
           {activeTab === 'list' && (

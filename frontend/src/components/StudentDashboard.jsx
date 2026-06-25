@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Camera, Calendar, Clock, BookOpen, CheckCircle, XCircle, Trophy, BarChart2 } from 'lucide-react';
-import { attendanceAPI } from '../services/api';
+import { Camera, Calendar, Clock, BookOpen, CheckCircle, XCircle, Trophy, BarChart2, RefreshCw, PlayCircle } from 'lucide-react';
+import { attendanceAPI, sessionAPI } from '../services/api';
 import AttendanceModal from './AttendanceModal';
 import LeaveModal from './LeaveModal';
 import NavBar from './NavBar';
@@ -105,6 +105,9 @@ function WeekChart({ history }) {
 export default function StudentDashboard({ user, onLogout, onUpdateUser }) {
   const [showModal, setShowModal] = useState(false);
   const [showLeave, setShowLeave] = useState(false);
+  const [activeSessions, setActiveSessions] = useState([]);
+  const [sessionsLoading, setSessionsLoading] = useState(false);
+  const [selectedSession, setSelectedSession] = useState(null); // session để điểm danh
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [leaderboard, setLeaderboard] = useState([]);
@@ -136,13 +139,25 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser }) {
     }
   }, [user?.classId]);
 
+  const fetchActiveSessions = useCallback(async () => {
+    if (!user?.classId) return;
+    setSessionsLoading(true);
+    try {
+      const res = await sessionAPI.getActive(user.classId);
+      setActiveSessions(res.data.sessions || []);
+    } catch { setActiveSessions([]); }
+    setSessionsLoading(false);
+  }, [user?.classId]);
+
   useEffect(() => {
     fetchHistory();
     fetchLeaderboard();
-  }, [fetchHistory, fetchLeaderboard]);
+    fetchActiveSessions();
+  }, [fetchHistory, fetchLeaderboard, fetchActiveSessions]);
 
   const handleSuccess = (status) => {
     setShowModal(false);
+    setSelectedSession(null);
     if (status === 'late') {
       showToast('Điểm danh muộn! Vui lòng đến đúng giờ hơn.', 'warning');
     } else {
@@ -150,6 +165,7 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser }) {
     }
     fetchHistory();
     fetchLeaderboard();
+    fetchActiveSessions();
   };
 
   const stats = {
@@ -207,23 +223,54 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser }) {
           ))}
         </div>
 
-        {/* Action buttons */}
-        <div className="grid grid-cols-2 gap-3">
-          <button
-            onClick={() => setShowModal(true)}
-            className="bg-blue-500 hover:bg-blue-600 active:scale-95 text-white rounded-2xl py-6 shadow-md flex flex-col items-center gap-2 transition-all"
-          >
-            <Camera size={36} />
-            <span className="text-base font-bold">ĐIỂM DANH</span>
-            <span className="text-blue-100 text-xs">GPS + Khuôn mặt</span>
-          </button>
+        {/* Sessions + actions */}
+        <div className="space-y-3">
+          {/* Phiên đang mở */}
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-3 border-b dark:border-gray-700">
+              <p className="font-semibold text-sm text-gray-700 dark:text-gray-200">Phiên điểm danh hôm nay</p>
+              <button onClick={fetchActiveSessions} disabled={sessionsLoading} className="text-gray-400 hover:text-gray-600 p-1">
+                <RefreshCw size={14} className={sessionsLoading ? 'animate-spin' : ''} />
+              </button>
+            </div>
+            {sessionsLoading ? (
+              <div className="py-5 text-center text-gray-400 text-sm">Đang kiểm tra phiên...</div>
+            ) : activeSessions.length === 0 ? (
+              <div className="py-5 text-center text-gray-400 text-sm">
+                <Clock size={24} className="mx-auto mb-1.5 opacity-40" />
+                Chưa có phiên điểm danh nào đang mở
+              </div>
+            ) : (
+              <div className="divide-y divide-gray-100 dark:divide-gray-700">
+                {activeSessions.map(session => (
+                  <div key={session.sessionId} className="flex items-center gap-3 px-4 py-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm text-gray-800 dark:text-white">{session.subject}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">Ca {session.period} · {session.startTime}–{session.endTime}</p>
+                    </div>
+                    <button
+                      onClick={() => { setSelectedSession(session); setShowModal(true); }}
+                      className="shrink-0 flex items-center gap-1.5 bg-blue-500 hover:bg-blue-600 active:scale-95 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-all"
+                    >
+                      <Camera size={15} />
+                      Điểm danh
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Nút xin nghỉ */}
           <button
             onClick={() => setShowLeave(true)}
-            className="bg-indigo-500 hover:bg-indigo-600 active:scale-95 text-white rounded-2xl py-6 shadow-md flex flex-col items-center gap-2 transition-all"
+            className="w-full bg-indigo-500 hover:bg-indigo-600 active:scale-95 text-white rounded-2xl py-4 shadow-md flex items-center justify-center gap-3 transition-all"
           >
-            <BookOpen size={36} />
-            <span className="text-base font-bold">XIN NGHỈ</span>
-            <span className="text-indigo-100 text-xs">Nộp giấy tờ</span>
+            <BookOpen size={22} />
+            <div className="text-left">
+              <p className="font-bold text-sm">XIN NGHỈ PHÉP</p>
+              <p className="text-indigo-100 text-xs">Nộp giấy tờ xin nghỉ</p>
+            </div>
           </button>
         </div>
 
@@ -334,7 +381,8 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser }) {
       {showModal && (
         <AttendanceModal
           classId={user?.classId}
-          onClose={() => setShowModal(false)}
+          session={selectedSession}
+          onClose={() => { setShowModal(false); setSelectedSession(null); }}
           onSuccess={handleSuccess}
         />
       )}
