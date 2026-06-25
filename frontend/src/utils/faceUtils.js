@@ -14,11 +14,11 @@ export async function loadFaceModels(onProgress) {
   loading = true;
   const faceapi = window.faceapi;
   if (!faceapi) throw new Error('face-api.js chưa được tải. Vui lòng tải lại trang.');
-  onProgress?.('Đang tải model nhận diện khuôn mặt (1/3)...');
+  onProgress?.('Đang tải model phát hiện khuôn mặt (1/3)...');
   await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
-  onProgress?.('Đang tải model xác định điểm mốc (2/3)...');
+  onProgress?.('Đang tải model điểm mốc khuôn mặt (2/3)...');
   await faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODEL_URL);
-  onProgress?.('Đang tải model nhận diện (3/3)...');
+  onProgress?.('Đang tải model nhận diện sinh trắc học (3/3)...');
   await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
   modelsLoaded = true;
   loading = false;

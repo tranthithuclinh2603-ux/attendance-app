@@ -43,6 +43,7 @@ export default function RegisterPage() {
   // Step 2: Student ID card
   const [studentIdImage, setStudentIdImage] = useState(null);
   const [idError, setIdError] = useState('');
+  const [modelPreloaded, setModelPreloaded] = useState(false);
 
   // Step 3: Face enrollment
   const videoRef = useRef(null);
@@ -106,6 +107,13 @@ export default function RegisterPage() {
   };
 
   // ── Step 2: Student ID card upload ────────────────
+  // Preload face models in background the moment step 2 is shown
+  useEffect(() => {
+    if (step === 2 && !modelPreloaded) {
+      loadFaceModels().then(() => setModelPreloaded(true)).catch(() => {});
+    }
+  }, [step, modelPreloaded]);
+
   const handleIdUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -122,21 +130,33 @@ export default function RegisterPage() {
   };
 
   // ── Step 3: Face enrollment ────────────────────────
+  // Gắn stream vào video khi DOM của bước 3 sẵn sàng
+  useEffect(() => {
+    if (step === 3 && streamRef.current && videoRef.current && !videoRef.current.srcObject) {
+      videoRef.current.srcObject = streamRef.current;
+    }
+  }, [step]);
+
   const startFaceEnroll = async () => {
     setFaceStep('loadingModel');
-    setFaceMsg('');
+    setFaceMsg('Đang bật camera...');
     try {
-      await loadFaceModels((msg) => setFaceMsg(msg));
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 640, height: 480 } });
+      // Khởi động camera và tải model SONG SONG
+      const [stream] = await Promise.all([
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 640, height: 480 } }),
+        loadFaceModels((msg) => setFaceMsg(msg)),
+      ]);
       streamRef.current = stream;
-      // Wait for videoRef to be mounted
-      await new Promise(r => setTimeout(r, 300));
-      if (videoRef.current) videoRef.current.srcObject = stream;
+      // Video sẽ được gắn bởi useEffect ở trên sau khi re-render
       setFaceStep('ready');
       setFaceMsg('');
     } catch (err) {
       setFaceStep('error');
-      setFaceMsg(err.message || 'Không thể khởi động camera hoặc tải model');
+      setFaceMsg(
+        err.name === 'NotAllowedError'
+          ? 'Bạn cần cho phép truy cập camera.'
+          : err.message || 'Không thể khởi động camera hoặc tải model'
+      );
     }
   };
 
@@ -395,9 +415,16 @@ export default function RegisterPage() {
 
             {/* Camera / result */}
             {faceStep === 'loadingModel' && (
-              <div className="flex flex-col items-center gap-3 py-10 bg-gray-50 rounded-xl">
-                <div className="w-10 h-10 border-4 border-violet-400 border-t-transparent rounded-full animate-spin" />
-                <p className="text-gray-600 text-sm text-center">{faceMsg || 'Đang tải...'}</p>
+              <div className="flex flex-col items-center gap-4 py-10 bg-gray-50 rounded-xl px-6">
+                <div className="w-12 h-12 border-4 border-violet-400 border-t-transparent rounded-full animate-spin" />
+                <div className="text-center">
+                  <p className="text-gray-700 text-sm font-medium">{faceMsg || 'Đang chuẩn bị...'}</p>
+                  <p className="text-gray-400 text-xs mt-1">Lần đầu có thể mất 10–20 giây để tải dữ liệu nhận diện</p>
+                </div>
+                {/* Progress bar animation */}
+                <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
+                  <div className="h-full bg-violet-500 rounded-full animate-pulse" style={{ width: '70%' }} />
+                </div>
               </div>
             )}
 
