@@ -61,13 +61,15 @@ const autoOpenFromTimetable = async (req, res) => {
     // Thứ hôm nay theo giờ VN (1=Thứ 2, 7=Chủ nhật)
     const now = new Date();
     const vnNow = new Date(now.getTime() + 7 * 3600 * 1000);
-    const dayOfWeek = vnNow.getUTCDay() === 0 ? 7 : vnNow.getUTCDay(); // 0=Sun→7
+    // App dùng 2=Thứ2(Mon)...7=Thứ7(Sat). getUTCDay(): 0=Sun,1=Mon,...,6=Sat
+    const rawDay = vnNow.getUTCDay();
+    const dayOfWeek = rawDay === 0 ? null : rawDay + 1; // Mon→2, Tue→3,...,Sat→7, Sun→null
     const date = vnNow.toISOString().split('T')[0];
 
     const timetable = snap.val();
     const todayEntries = Object.values(timetable).filter(e => e.dayOfWeek === dayOfWeek);
 
-    if (todayEntries.length === 0) {
+    if (!dayOfWeek || todayEntries.length === 0) {
       return res.status(404).json({ success: false, message: 'Không có ca học nào hôm nay theo TKB' });
     }
 

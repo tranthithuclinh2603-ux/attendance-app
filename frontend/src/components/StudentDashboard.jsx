@@ -118,7 +118,9 @@ function TimetableTab({ classId }) {
   }, [classId]);
 
   // Lấy thứ hôm nay (1=T2…7=CN)
-  const todayDow = new Date().getDay() === 0 ? 7 : new Date().getDay();
+  // App dùng 2=Thứ2(Mon)...7=Thứ7(Sat). getDay(): 0=Sun,1=Mon,...,6=Sat
+  const rawDow = new Date().getDay();
+  const todayDow = rawDow === 0 ? null : rawDow + 1;
 
   if (loading) return <div className="py-10 text-center text-gray-400 text-sm">Đang tải lịch học...</div>;
   if (!timetable.length) return (
