@@ -297,5 +297,19 @@ const getMyFaceDescriptors = async (req, res) => {
   }
 };
 
+// Lưu ảnh thẻ sinh viên
+const saveStudentId = async (req, res) => {
+  try {
+    const { uid } = req.user;
+    const { imageBase64 } = req.body;
+    if (!imageBase64) return res.status(400).json({ success: false, message: 'Thiếu ảnh thẻ sinh viên' });
+    await db.ref(`users/${uid}/studentIdCard`).set({ imageBase64, uploadedAt: new Date().toISOString() });
+    res.json({ success: true, message: 'Đã lưu ảnh thẻ sinh viên' });
+  } catch (err) {
+    console.error('StudentId save error:', err);
+    res.status(500).json({ success: false, message: 'Lỗi server' });
+  }
+};
+
 module.exports = { register, login, resetPassword, updateProfile, updateAvatar, updateClass, bulkRegister,
-  saveWebAuthnCredential, loginWebAuthn, saveFaceDescriptors, getMyFaceDescriptors };
+  saveWebAuthnCredential, loginWebAuthn, saveFaceDescriptors, getMyFaceDescriptors, saveStudentId };

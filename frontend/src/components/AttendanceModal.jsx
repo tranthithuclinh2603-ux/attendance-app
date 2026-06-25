@@ -1,10 +1,9 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react';
-import { Camera, RotateCcw, Check, X, Loader, MapPin, AlertTriangle, Navigation } from 'lucide-react';
-import { attendanceAPI } from '../services/api';
+import { Camera, RotateCcw, Check, X, Loader, MapPin, AlertTriangle, Navigation, ShieldCheck, ShieldX } from 'lucide-react';
+import { attendanceAPI, biometricAPI } from '../services/api';
+import { loadFaceModels, detectFaceDescriptor, matchDescriptor } from '../utils/faceUtils';
 import GeofenceMap from './GeofenceMap';
 
-// ===== CẤU HÌNH VỊ TRÍ TRƯỜNG =====
-// Thay tọa độ này bằng tọa độ thực của trường bạn
 const SCHOOL_LOCATION = {
   lat: 10.813308852984058,
   lng: 106.77209163591941,
@@ -12,70 +11,47 @@ const SCHOOL_LOCATION = {
   name: 'Trường Cao Đẳng Kinh Tế Đối Ngoại',
 };
 
-// Tính khoảng cách giữa 2 tọa độ (đơn vị: mét)
 function getDistanceMeters(lat1, lng1, lat2, lng2) {
   const R = 6371000;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
   const dLng = ((lng2 - lng1) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLng / 2) ** 2;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
-
-const GPS_STATUS = {
-  idle: null,
-  loading: 'loading',
-  success: 'success',
-  outOfRange: 'outOfRange',
-  error: 'error',
-};
 
 export default function AttendanceModal({ classId, onClose, onSuccess }) {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const streamRef = useRef(null);
 
-  const [step, setStep] = useState('gps'); // gps | camera | preview | loading | result
-  const [gpsStatus, setGpsStatus] = useState(GPS_STATUS.idle);
-  const [gpsData, setGpsData] = useState(null); // { lat, lng, accuracy, distance }
+  // step: gps | loadingFace | camera | verifying | result
+  const [step, setStep] = useState('gps');
+  const [gpsStatus, setGpsStatus] = useState('idle'); // idle|loading|success|outOfRange|error
+  const [gpsData, setGpsData] = useState(null);
   const [gpsError, setGpsError] = useState('');
-
-  const [capturedImage, setCapturedImage] = useState(null);
-  const [cameraError, setCameraError] = useState('');
-  const [result, setResult] = useState(null);
   const [showMap, setShowMap] = useState(false);
 
-  // ── GPS ──────────────────────────────────────────
+  const [cameraError, setCameraError] = useState('');
+  const [capturedImage, setCapturedImage] = useState(null);
+  const [faceMsg, setFaceMsg] = useState('');
+  const [storedDescriptors, setStoredDescriptors] = useState(null); // null = not loaded yet
+  const [result, setResult] = useState(null);
+
+  // ── GPS ──────────────────────────────────────────────
   const getGPS = useCallback(() => {
-    setGpsStatus(GPS_STATUS.loading);
+    setGpsStatus('loading');
     setGpsError('');
-
-    if (!navigator.geolocation) {
-      setGpsStatus(GPS_STATUS.error);
-      setGpsError('Trình duyệt không hỗ trợ GPS');
-      return;
-    }
-
+    if (!navigator.geolocation) { setGpsStatus('error'); setGpsError('Trình duyệt không hỗ trợ GPS'); return; }
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const { latitude: lat, longitude: lng, accuracy } = pos.coords;
         const distance = Math.round(getDistanceMeters(lat, lng, SCHOOL_LOCATION.lat, SCHOOL_LOCATION.lng));
-
-        const data = { lat, lng, accuracy: Math.round(accuracy), distance };
-        setGpsData(data);
-
-        if (distance <= SCHOOL_LOCATION.radius) {
-          setGpsStatus(GPS_STATUS.success);
-        } else {
-          setGpsStatus(GPS_STATUS.outOfRange);
-        }
+        setGpsData({ lat, lng, accuracy: Math.round(accuracy), distance });
+        setGpsStatus(distance <= SCHOOL_LOCATION.radius ? 'success' : 'outOfRange');
       },
       (err) => {
-        setGpsStatus(GPS_STATUS.error);
-        if (err.code === 1) setGpsError('Bạn đã từ chối quyền truy cập vị trí. Vui lòng cho phép GPS trong cài đặt trình duyệt.');
+        setGpsStatus('error');
+        if (err.code === 1) setGpsError('Bạn chưa cho phép truy cập vị trí. Vui lòng bật trong cài đặt trình duyệt.');
         else if (err.code === 2) setGpsError('Không xác định được vị trí. Kiểm tra GPS đã bật chưa.');
         else setGpsError('Hết thời gian lấy vị trí. Thử lại.');
       },
@@ -85,22 +61,20 @@ export default function AttendanceModal({ classId, onClose, onSuccess }) {
 
   useEffect(() => { getGPS(); }, [getGPS]);
 
-  // ── Camera ────────────────────────────────────────
+  // ── Camera ───────────────────────────────────────────
   const startCamera = useCallback(async () => {
+    setCameraError('');
     try {
-      setCameraError('');
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user', width: 640, height: 480 },
-      });
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 640, height: 480 } });
       streamRef.current = stream;
       if (videoRef.current) videoRef.current.srcObject = stream;
     } catch {
-      setCameraError('Không thể truy cập camera. Vui lòng cấp quyền camera.');
+      setCameraError('Không thể truy cập camera. Vui lòng cấp quyền và thử lại.');
     }
   }, []);
 
   const stopCamera = useCallback(() => {
-    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current?.getTracks().forEach(t => t.stop());
   }, []);
 
   useEffect(() => {
@@ -108,45 +82,95 @@ export default function AttendanceModal({ classId, onClose, onSuccess }) {
     return () => { if (step === 'camera') stopCamera(); };
   }, [step, startCamera, stopCamera]);
 
-  const capture = () => {
+  // ── Chuyển sang camera: tải model + lấy face data ───
+  const proceedToCamera = async () => {
+    setStep('loadingFace');
+    setFaceMsg('Đang tải model nhận diện...');
+    try {
+      await loadFaceModels((msg) => setFaceMsg(msg));
+      // Fetch stored face descriptors
+      const res = await biometricAPI.getMyFace();
+      if (res.data.enrolled && res.data.faceData?.descriptors?.length) {
+        setStoredDescriptors(res.data.faceData.descriptors);
+      } else {
+        setStoredDescriptors([]); // không có dữ liệu → vẫn cho điểm danh nhưng bỏ qua nhận diện
+      }
+      setStep('camera');
+      setFaceMsg('');
+    } catch {
+      setFaceMsg('');
+      setStoredDescriptors([]);
+      setStep('camera');
+    }
+  };
+
+  // ── Chụp ảnh → nhận diện khuôn mặt ─────────────────
+  const capture = async () => {
     const canvas = canvasRef.current;
     const video = videoRef.current;
     canvas.width = video.videoWidth || 640;
     canvas.height = video.videoHeight || 480;
     canvas.getContext('2d').drawImage(video, 0, 0);
-    setCapturedImage(canvas.toDataURL('image/jpeg', 0.8));
+    const imgData = canvas.toDataURL('image/jpeg', 0.85);
     stopCamera();
-    setStep('preview');
+    setCapturedImage(imgData);
+    setStep('verifying');
+
+    // Face recognition
+    if (storedDescriptors && storedDescriptors.length > 0) {
+      setFaceMsg('Đang nhận diện khuôn mặt...');
+      const liveDescriptor = await detectFaceDescriptor(canvas);
+      if (!liveDescriptor) {
+        setResult({ success: false, message: 'Không phát hiện khuôn mặt. Vui lòng thử lại với ánh sáng tốt hơn.', faceResult: null });
+        setStep('result');
+        return;
+      }
+      const { match, confidence, distance } = matchDescriptor(liveDescriptor, storedDescriptors);
+      if (!match) {
+        setResult({
+          success: false,
+          message: `Khuôn mặt không khớp (độ tương đồng: ${confidence}%). Điểm danh bị từ chối.`,
+          faceResult: { match: false, confidence, distance },
+        });
+        setStep('result');
+        return;
+      }
+      // Face matched → submit check-in
+      await submitCheckin(imgData, confidence);
+    } else {
+      // No face data enrolled → skip face check, submit directly
+      await submitCheckin(imgData, null);
+    }
+  };
+
+  const submitCheckin = async (imageBase64, faceConfidence) => {
+    setFaceMsg('Đang ghi nhận điểm danh...');
+    try {
+      const res = await attendanceAPI.checkin({
+        classId: classId || 'DEFAULT',
+        imageBase64,
+        gpsLat: gpsData?.lat,
+        gpsLng: gpsData?.lng,
+        faceConfidence,
+        timestamp: new Date().toISOString(),
+      });
+      setResult({ success: true, message: res.data.message, status: res.data.status, faceConfidence });
+    } catch (err) {
+      setResult({ success: false, message: err.response?.data?.message || 'Điểm danh thất bại' });
+    }
+    setStep('result');
+    setFaceMsg('');
   };
 
   const retake = () => {
     setCapturedImage(null);
+    setFaceMsg('');
     setStep('camera');
   };
 
-  const confirm = async () => {
-    setStep('loading');
-    try {
-      const res = await attendanceAPI.checkin({
-        classId: classId || 'ATTT1',
-        imageBase64: capturedImage,
-        gpsLat: gpsData?.lat,
-        gpsLng: gpsData?.lng,
-        timestamp: new Date().toISOString(),
-      });
-      setResult({ success: true, message: res.data.message, status: res.data.status });
-      setStep('result');
-      onSuccess?.(res.data.status);
-    } catch (err) {
-      setResult({ success: false, message: err.response?.data?.message || 'Điểm danh thất bại' });
-      setStep('result');
-    }
-  };
-
-  // ── GPS Step UI ───────────────────────────────────
+  // ── GPS UI ───────────────────────────────────────────
   const renderGPS = () => (
     <div className="py-4">
-      {/* School info */}
       <div className="bg-blue-50 rounded-xl p-4 mb-5 flex items-start gap-3">
         <MapPin className="text-blue-500 mt-0.5 shrink-0" size={20} />
         <div>
@@ -155,90 +179,57 @@ export default function AttendanceModal({ classId, onClose, onSuccess }) {
         </div>
       </div>
 
-      {/* Loading */}
-      {gpsStatus === GPS_STATUS.loading && (
+      {gpsStatus === 'loading' && (
         <div className="flex flex-col items-center gap-3 py-6">
           <Loader className="animate-spin text-blue-500" size={36} />
-          <p className="text-gray-600 text-sm">Đang xác định vị trí của bạn...</p>
+          <p className="text-gray-600 text-sm">Đang xác định vị trí...</p>
         </div>
       )}
 
-      {/* Success */}
-      {gpsStatus === GPS_STATUS.success && gpsData && (
+      {gpsStatus === 'success' && gpsData && (
         <div>
           <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-4">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-2xl">✅</span>
-              <p className="font-semibold text-green-700">Trong phạm vi cho phép</p>
-            </div>
-            <div className="text-sm text-gray-600 space-y-1">
-              <p>📍 Khoảng cách: <span className="font-medium text-green-600">{gpsData.distance}m</span> (tối đa {SCHOOL_LOCATION.radius}m)</p>
-              <p>🎯 Độ chính xác GPS: ±{gpsData.accuracy}m</p>
-            </div>
+            <div className="flex items-center gap-2 mb-2"><span className="text-2xl">✅</span><p className="font-semibold text-green-700">Trong phạm vi cho phép</p></div>
+            <p className="text-sm text-gray-600">📍 Khoảng cách: <span className="font-medium text-green-600">{gpsData.distance}m</span> (tối đa {SCHOOL_LOCATION.radius}m)</p>
+            <p className="text-sm text-gray-600">🎯 Độ chính xác GPS: ±{gpsData.accuracy}m</p>
           </div>
           <div className="flex gap-2">
-            <button
-              onClick={() => setShowMap(true)}
-              className="flex-none bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 px-4 rounded-xl font-medium flex items-center gap-2 transition-colors"
-            >
-              <Navigation size={18} /> Bản đồ
+            <button onClick={() => setShowMap(true)} className="flex-none bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 px-4 rounded-xl text-sm font-medium flex items-center gap-2">
+              <Navigation size={18}/> Bản đồ
             </button>
-            <button
-              onClick={() => setStep('camera')}
-              className="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors"
-            >
-              <Camera size={20} /> Tiếp tục chụp ảnh
+            <button onClick={proceedToCamera} className="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-3 rounded-xl text-sm font-medium flex items-center justify-center gap-2">
+              <Camera size={18}/> Tiếp tục chụp ảnh
             </button>
           </div>
         </div>
       )}
 
-      {/* Out of range */}
-      {gpsStatus === GPS_STATUS.outOfRange && gpsData && (
+      {gpsStatus === 'outOfRange' && gpsData && (
         <div>
           <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-4">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-2xl">❌</span>
-              <p className="font-semibold text-red-700">Ngoài phạm vi trường</p>
-            </div>
-            <div className="text-sm text-gray-600 space-y-1">
-              <p>📍 Khoảng cách: <span className="font-medium text-red-600">{gpsData.distance}m</span> (tối đa {SCHOOL_LOCATION.radius}m)</p>
-              <p>🎯 Độ chính xác GPS: ±{gpsData.accuracy}m</p>
-            </div>
-            <p className="text-red-600 text-sm mt-2 font-medium">
-              Bạn cần có mặt tại trường để điểm danh.
-            </p>
+            <div className="flex items-center gap-2 mb-2"><span className="text-2xl">❌</span><p className="font-semibold text-red-700">Ngoài phạm vi trường</p></div>
+            <p className="text-sm text-gray-600">📍 Khoảng cách: <span className="font-medium text-red-600">{gpsData.distance}m</span> (tối đa {SCHOOL_LOCATION.radius}m)</p>
+            <p className="text-sm text-red-600 mt-1 font-medium">Bạn cần có mặt tại trường để điểm danh.</p>
           </div>
           <div className="flex gap-2">
-            <button
-              onClick={() => setShowMap(true)}
-              className="flex-none bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 px-4 rounded-xl font-medium flex items-center gap-2 transition-colors"
-            >
-              <Navigation size={18} /> Bản đồ
+            <button onClick={() => setShowMap(true)} className="flex-none bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 px-4 rounded-xl text-sm font-medium flex items-center gap-2">
+              <Navigation size={18}/> Bản đồ
             </button>
-            <button
-              onClick={getGPS}
-              className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors"
-            >
-              <RotateCcw size={18} /> Thử lại
+            <button onClick={getGPS} className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 rounded-xl text-sm font-medium flex items-center justify-center gap-2">
+              <RotateCcw size={18}/> Thử lại
             </button>
           </div>
         </div>
       )}
 
-      {/* Error */}
-      {gpsStatus === GPS_STATUS.error && (
+      {gpsStatus === 'error' && (
         <div>
           <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-4 flex items-start gap-3">
-            <AlertTriangle className="text-yellow-500 shrink-0 mt-0.5" size={20} />
+            <AlertTriangle className="text-yellow-500 shrink-0 mt-0.5" size={20}/>
             <p className="text-sm text-gray-700">{gpsError}</p>
           </div>
-          <button
-            onClick={getGPS}
-            className="w-full bg-blue-500 hover:bg-blue-600 text-white py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors"
-          >
-            <RotateCcw size={18} />
-            Thử lại
+          <button onClick={getGPS} className="w-full bg-blue-500 hover:bg-blue-600 text-white py-3 rounded-xl text-sm font-medium flex items-center justify-center gap-2">
+            <RotateCcw size={18}/> Thử lại
           </button>
         </div>
       )}
@@ -251,27 +242,23 @@ export default function AttendanceModal({ classId, onClose, onSuccess }) {
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b">
           <h2 className="font-semibold text-gray-800 flex items-center gap-2">
-            {step === 'gps' ? <MapPin size={20} className="text-blue-500" /> : <Camera size={20} className="text-blue-500" />}
-            {step === 'gps' ? 'Xác nhận vị trí' : 'Điểm danh khuôn mặt'}
+            {step === 'gps' ? <MapPin size={20} className="text-blue-500"/> : <Camera size={20} className="text-blue-500"/>}
+            {step === 'gps' ? 'Xác nhận vị trí' : step === 'loadingFace' ? 'Chuẩn bị...' : 'Điểm danh khuôn mặt'}
           </h2>
-          {/* Step indicator */}
           <div className="flex items-center gap-2">
+            {/* Step indicators */}
             <div className={`flex items-center gap-1 text-xs ${step === 'gps' ? 'text-blue-600 font-medium' : 'text-gray-400'}`}>
               <div className={`w-5 h-5 rounded-full flex items-center justify-center text-xs ${step === 'gps' ? 'bg-blue-500 text-white' : 'bg-green-500 text-white'}`}>
                 {step === 'gps' ? '1' : '✓'}
-              </div>
-              GPS
+              </div> GPS
             </div>
-            <div className="w-4 h-px bg-gray-300" />
-            <div className={`flex items-center gap-1 text-xs ${['camera','preview','loading','result'].includes(step) ? 'text-blue-600 font-medium' : 'text-gray-400'}`}>
-              <div className={`w-5 h-5 rounded-full flex items-center justify-center text-xs ${['camera','preview','loading','result'].includes(step) ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-500'}`}>
+            <div className="w-4 h-px bg-gray-300"/>
+            <div className={`flex items-center gap-1 text-xs ${['loadingFace','camera','verifying','result'].includes(step) ? 'text-blue-600 font-medium' : 'text-gray-400'}`}>
+              <div className={`w-5 h-5 rounded-full flex items-center justify-center text-xs ${['loadingFace','camera','verifying','result'].includes(step) ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-500'}`}>
                 2
-              </div>
-              Ảnh
+              </div> Ảnh
             </div>
-            <button onClick={onClose} className="ml-3 text-gray-400 hover:text-gray-600">
-              <X size={20} />
-            </button>
+            <button onClick={onClose} className="ml-3 text-gray-400 hover:text-gray-600"><X size={20}/></button>
           </div>
         </div>
 
@@ -279,91 +266,112 @@ export default function AttendanceModal({ classId, onClose, onSuccess }) {
           {/* GPS step */}
           {step === 'gps' && renderGPS()}
 
-          {/* Camera step */}
+          {/* Loading face model */}
+          {step === 'loadingFace' && (
+            <div className="flex flex-col items-center gap-3 py-10">
+              <div className="w-12 h-12 border-4 border-blue-400 border-t-transparent rounded-full animate-spin"/>
+              <p className="text-gray-600 text-sm text-center">{faceMsg || 'Đang chuẩn bị...'}</p>
+            </div>
+          )}
+
+          {/* Camera */}
           {step === 'camera' && (
             <div>
               {cameraError ? (
-                <div className="bg-red-50 text-red-600 rounded-lg p-4 text-sm text-center mb-4">{cameraError}</div>
+                <div className="bg-red-50 text-red-600 rounded-lg p-4 text-sm text-center mb-3">{cameraError}
+                  <button onClick={startCamera} className="mt-3 w-full bg-red-500 text-white py-2.5 rounded-lg text-sm flex items-center justify-center gap-2">
+                    <RotateCcw size={16}/> Thử lại
+                  </button>
+                </div>
               ) : (
-                <div className="relative bg-gray-900 rounded-xl overflow-hidden" style={{ maxHeight: '60vh', minHeight: '240px' }}>
-                  <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover scale-x-[-1]" style={{ maxHeight: '60vh' }} />
-                  {/* Face guide oval */}
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <div className="w-40 h-48 border-4 border-blue-400 rounded-full opacity-60" />
-                  </div>
-                  {/* GPS badge */}
-                  <div className="absolute top-3 left-3 bg-green-500 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1">
-                    <MapPin size={10} /> {gpsData?.distance}m
-                  </div>
-                  {/* Hint text */}
-                  <div className="absolute bottom-14 left-0 right-0 flex justify-center pointer-events-none">
-                    <p className="bg-black/40 text-white text-xs px-3 py-1 rounded-full">Nhìn thẳng, đủ ánh sáng</p>
-                  </div>
-                  {/* Capture button overlaid on video */}
-                  <div className="absolute bottom-3 left-0 right-0 flex justify-center">
-                    <button
-                      onClick={capture}
-                      className="w-16 h-16 bg-white rounded-full shadow-lg flex items-center justify-center border-4 border-blue-500 active:scale-95 transition-transform"
-                    >
-                      <Camera size={28} className="text-blue-500" />
-                    </button>
+                <div>
+                  {storedDescriptors?.length > 0 && (
+                    <div className="flex items-center gap-2 mb-3 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+                      <ShieldCheck size={16} className="text-green-600"/>
+                      <p className="text-green-700 text-xs font-medium">Nhận diện khuôn mặt đã kích hoạt</p>
+                    </div>
+                  )}
+                  <div className="relative bg-gray-900 rounded-xl overflow-hidden" style={{ maxHeight: '60vh', minHeight: '240px' }}>
+                    <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover scale-x-[-1]" style={{ maxHeight: '60vh' }}/>
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <div className="w-40 h-48 border-4 border-blue-400 rounded-full opacity-60"/>
+                    </div>
+                    <div className="absolute top-3 left-3 bg-green-500 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1">
+                      <MapPin size={10}/> {gpsData?.distance}m
+                    </div>
+                    <div className="absolute bottom-14 left-0 right-0 flex justify-center pointer-events-none">
+                      <p className="bg-black/40 text-white text-xs px-3 py-1 rounded-full">Nhìn thẳng, đủ ánh sáng</p>
+                    </div>
+                    <div className="absolute bottom-3 left-0 right-0 flex justify-center">
+                      <button onClick={capture} className="w-16 h-16 bg-white rounded-full shadow-lg flex items-center justify-center border-4 border-blue-500 active:scale-95 transition-transform">
+                        <Camera size={28} className="text-blue-500"/>
+                      </button>
+                    </div>
                   </div>
                 </div>
-              )}
-              {cameraError && (
-                <button
-                  onClick={startCamera}
-                  className="mt-3 w-full bg-blue-500 hover:bg-blue-600 text-white py-3 rounded-xl font-medium flex items-center justify-center gap-2"
-                >
-                  <RotateCcw size={18} /> Thử lại
-                </button>
               )}
             </div>
           )}
 
-          {/* Preview step */}
-          {step === 'preview' && (
+          {/* Verifying */}
+          {step === 'verifying' && (
             <div>
-              <div className="relative rounded-xl overflow-hidden" style={{ maxHeight: '60vh', minHeight: '240px' }}>
-                <img src={capturedImage} alt="Captured" className="w-full h-full object-cover scale-x-[-1]" style={{ maxHeight: '60vh' }} />
-                <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-4 px-4">
-                  <button onClick={retake} className="flex-1 bg-white/90 backdrop-blur text-gray-700 py-3 rounded-xl font-medium flex items-center justify-center gap-2 shadow">
-                    <RotateCcw size={18} /> Chụp lại
-                  </button>
-                  <button onClick={confirm} className="flex-1 bg-blue-500 text-white py-3 rounded-xl font-medium flex items-center justify-center gap-2 shadow">
-                    <Check size={18} /> Xác nhận
-                  </button>
+              {capturedImage && (
+                <div className="relative rounded-xl overflow-hidden mb-4" style={{ maxHeight: '50vh' }}>
+                  <img src={capturedImage} alt="Captured" className="w-full object-cover scale-x-[-1]" style={{ maxHeight: '50vh' }}/>
+                  <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center gap-3">
+                    <div className="w-10 h-10 border-4 border-white border-t-transparent rounded-full animate-spin"/>
+                    <p className="text-white text-sm font-medium">{faceMsg || 'Đang xác thực...'}</p>
+                  </div>
                 </div>
-              </div>
-            </div>
-          )}
-
-          {/* Loading */}
-          {step === 'loading' && (
-            <div className="py-10 flex flex-col items-center gap-4">
-              <Loader className="animate-spin text-blue-500" size={40} />
-              <p className="text-gray-600">Đang xử lý điểm danh...</p>
+              )}
             </div>
           )}
 
           {/* Result */}
           {step === 'result' && result && (
-            <div className="py-8 flex flex-col items-center gap-4 text-center">
-              <div className={`w-20 h-20 rounded-full flex items-center justify-center text-4xl ${result.success ? (result.status === 'late' ? 'bg-yellow-100' : 'bg-green-100') : 'bg-red-100'}`}>
-                {result.success ? (result.status === 'late' ? '⏰' : '✅') : '❌'}
+            <div>
+              {/* Ảnh đã chụp */}
+              {capturedImage && (
+                <div className="rounded-xl overflow-hidden mb-4" style={{ maxHeight: '35vh' }}>
+                  <img src={capturedImage} alt="Captured" className="w-full object-cover scale-x-[-1]" style={{ maxHeight: '35vh' }}/>
+                </div>
+              )}
+
+              {/* Kết quả nhận diện */}
+              {result.faceResult !== undefined && result.faceResult !== null && (
+                <div className={`flex items-center gap-2 rounded-lg px-3 py-2 mb-3 text-sm ${result.faceResult.match ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
+                  {result.faceResult.match
+                    ? <><ShieldCheck size={16} className="text-green-600"/><span className="text-green-700">Khuôn mặt khớp ({result.faceResult.confidence}%)</span></>
+                    : <><ShieldX size={16} className="text-red-600"/><span className="text-red-700">Khuôn mặt không khớp ({result.faceResult.confidence}%)</span></>
+                  }
+                </div>
+              )}
+
+              <div className={`flex flex-col items-center gap-3 py-4 text-center rounded-xl ${result.success ? (result.status === 'late' ? 'bg-yellow-50' : 'bg-green-50') : 'bg-red-50'}`}>
+                <div className="text-5xl">{result.success ? (result.status === 'late' ? '⏰' : '✅') : '❌'}</div>
+                <p className={`font-semibold ${result.success ? (result.status === 'late' ? 'text-yellow-600' : 'text-green-600') : 'text-red-600'}`}>
+                  {result.message}
+                </p>
+                {result.faceConfidence && <p className="text-xs text-gray-500">Độ khớp khuôn mặt: {result.faceConfidence}%</p>}
               </div>
-              <p className={`text-lg font-semibold ${result.success ? (result.status === 'late' ? 'text-yellow-600' : 'text-green-600') : 'text-red-600'}`}>
-                {result.message}
-              </p>
-              <button onClick={onClose} className="mt-2 bg-blue-500 hover:bg-blue-600 text-white px-8 py-2.5 rounded-xl transition-colors">
-                Đóng
-              </button>
+
+              <div className="flex gap-3 mt-4">
+                {!result.success && (
+                  <button onClick={retake} className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2">
+                    <RotateCcw size={16}/> Thử lại
+                  </button>
+                )}
+                <button onClick={() => { onSuccess?.(result.status); onClose(); }} className="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-2.5 rounded-xl text-sm font-medium">
+                  Đóng
+                </button>
+              </div>
             </div>
           )}
         </div>
       </div>
-      <canvas ref={canvasRef} className="hidden" />
-      {showMap && <GeofenceMap gpsData={gpsData} onClose={() => setShowMap(false)} />}
+      <canvas ref={canvasRef} className="hidden"/>
+      {showMap && <GeofenceMap gpsData={gpsData} onClose={() => setShowMap(false)}/>}
     </div>
   );
 }

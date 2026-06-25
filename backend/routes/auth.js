@@ -3,7 +3,7 @@ const router = express.Router();
 const { verifyToken, verifyTeacher } = require('../middleware/auth');
 const {
   register, login, resetPassword, updateProfile, updateAvatar, updateClass, bulkRegister,
-  saveWebAuthnCredential, loginWebAuthn, saveFaceDescriptors, getMyFaceDescriptors,
+  saveWebAuthnCredential, loginWebAuthn, saveFaceDescriptors, getMyFaceDescriptors, saveStudentId,
 } = require('../controllers/authController');
 
 router.post('/register', register);
@@ -17,5 +17,6 @@ router.put('/class', verifyToken, updateClass);
 router.post('/webauthn', verifyToken, saveWebAuthnCredential);
 router.get('/face', verifyToken, getMyFaceDescriptors);
 router.post('/face', verifyToken, saveFaceDescriptors);
+router.put('/student-id', verifyToken, saveStudentId);
 
 module.exports = router;

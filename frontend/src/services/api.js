@@ -57,6 +57,7 @@ export const biometricAPI = {
   loginWebAuthn: (data) => API.post('/auth/login-webauthn', data),
   saveFace: (data) => API.post('/auth/face', data),
   getMyFace: () => API.get('/auth/face'),
+  saveStudentId: (data) => API.put('/auth/student-id', data),
 };
 
 // Admin
