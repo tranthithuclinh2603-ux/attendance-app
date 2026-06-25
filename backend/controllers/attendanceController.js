@@ -1,13 +1,25 @@
 const { db } = require('../models/firebase');
 
-// Giờ bắt đầu & muộn tính theo phút từ 00:00
+// Vietnam = UTC+7
+function toVN(date) {
+  return new Date(date.getTime() + 7 * 3600 * 1000);
+}
+function vnDateKey(date) {
+  return toVN(date).toISOString().split('T')[0]; // YYYY-MM-DD theo giờ VN
+}
+function vnTimeStr(date) {
+  const vn = toVN(date);
+  return `${String(vn.getUTCHours()).padStart(2,'0')}:${String(vn.getUTCMinutes()).padStart(2,'0')}`;
+}
+
+// Giờ bắt đầu & muộn tính theo phút từ 00:00 (giờ VN)
 const CLASS_START_MINUTES = 8 * 60 + 45; // 8:45
 const LATE_THRESHOLD_MINUTES = 15; // muộn sau 15 phút
 
 const getStatus = (timestamp) => {
   if (!timestamp) return 'absent';
-  const date = new Date(timestamp);
-  const totalMinutes = date.getHours() * 60 + date.getMinutes();
+  const vn = toVN(new Date(timestamp));
+  const totalMinutes = vn.getUTCHours() * 60 + vn.getUTCMinutes();
   if (totalMinutes <= CLASS_START_MINUTES + LATE_THRESHOLD_MINUTES) return 'present';
   return 'late';
 };
@@ -22,7 +34,7 @@ const checkin = async (req, res) => {
     }
 
     const now = timestamp ? new Date(timestamp) : new Date();
-    const dateKey = now.toISOString().split('T')[0]; // YYYY-MM-DD
+    const dateKey = vnDateKey(now); // ngày theo giờ VN
     const attendanceKey = `${classId}_${dateKey}`;
 
     // Check if already checked in
@@ -32,7 +44,7 @@ const checkin = async (req, res) => {
     }
 
     const status = getStatus(now.toISOString());
-    const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    const timeStr = vnTimeStr(now); // giờ:phút theo giờ VN
 
     const record = {
       timestamp: now.toISOString(),
@@ -78,7 +90,7 @@ const getHistory = async (req, res) => {
         history.push({
           date: keyDate,
           time: record.timestamp
-            ? new Date(record.timestamp).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
+            ? vnTimeStr(new Date(record.timestamp))
             : '-',
           classId: keyClass,
           status: record.status,
@@ -98,7 +110,7 @@ const getClassAttendance = async (req, res) => {
   try {
     const { classId } = req.params;
     const { date } = req.query;
-    const dateKey = date || new Date().toISOString().split('T')[0];
+    const dateKey = date || vnDateKey(new Date());
     const attendanceKey = `${classId}_${dateKey}`;
 
     // Get all students in class
@@ -120,7 +132,7 @@ const getClassAttendance = async (req, res) => {
         name: student.name,
         status: record?.status || 'absent',
         time: record?.timestamp
-          ? new Date(record.timestamp).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
+          ? vnTimeStr(new Date(record.timestamp))
           : '-',
         attendanceId: `${attendanceKey}_${uid}`,
       });
@@ -277,7 +289,7 @@ const manualCheckin = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Trạng thái không hợp lệ' });
     }
 
-    const dateKey = date || new Date().toISOString().split('T')[0];
+    const dateKey = date || vnDateKey(new Date());
     const attendanceKey = `${classId}_${dateKey}`;
 
     const studentSnap = await db.ref(`users/${studentUid}`).once('value');
@@ -307,7 +319,7 @@ const qrCheckin = async (req, res) => {
     const { uid, name } = req.user;
     if (!classId) return res.status(400).json({ success: false, message: 'classId là bắt buộc' });
 
-    const dateKey = date || new Date().toISOString().split('T')[0];
+    const dateKey = date || vnDateKey(new Date());
     const attendanceKey = `${classId}_${dateKey}`;
 
     const existing = await db.ref(`attendance/${attendanceKey}/${uid}`).once('value');

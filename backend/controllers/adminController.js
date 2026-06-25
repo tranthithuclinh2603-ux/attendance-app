@@ -43,13 +43,14 @@ const getSchoolStats = async (req, res) => {
       absenceRate: s.total ? Math.round((s.absent / s.total) * 100) : 0,
     })).sort((a, b) => b.absenceRate - a.absenceRate);
 
-    // Thống kê 7 ngày gần nhất
+    // Thống kê 7 ngày gần nhất (theo giờ VN UTC+7)
+    const toVN = (d) => new Date(d.getTime() + 7 * 3600 * 1000);
     const today = new Date();
     const daily = [];
     for (let i = 6; i >= 0; i--) {
       const d = new Date(today);
       d.setDate(d.getDate() - i);
-      const dateStr = d.toISOString().slice(0, 10);
+      const dateStr = toVN(d).toISOString().slice(0, 10);
       let present = 0, late = 0, absent = 0;
       attSnap.forEach((c) => {
         const a = c.val();
