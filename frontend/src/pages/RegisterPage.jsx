@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { GraduationCap, Eye, EyeOff, AlertCircle, CheckCircle, Upload, Camera, ChevronRight, Zap, BookOpen } from 'lucide-react';
 import { authAPI, biometricAPI } from '../services/api';
-import { resizeImage } from '../utils/faceUtils';
+import { resizeImage, loadFaceModels, extractDescriptorFromBase64, detectFaceDescriptor, compareTwoDescriptors } from '../utils/faceUtils';
 
 function getPasswordStrength(pw) {
   if (!pw) return null;
@@ -77,11 +77,13 @@ export default function RegisterPage() {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const streamRef = useRef(null);
-  const [faceStep, setFaceStep] = useState('init'); // init|loadingModel|ready|capturing|done|error
+  const idCardDescriptorRef = useRef(null); // descriptor trích từ ảnh thẻ SV
+  const [faceStep, setFaceStep] = useState('init'); // init|loadingCamera|loadingModels|verifyingId|ready|capturing|done|error
   const [faceMsg, setFaceMsg] = useState('');
   const [capturedCount, setCapturedCount] = useState(0);
-  const [faceDescriptors, setFaceDescriptors] = useState([]);
+  const [faceDescriptors, setFaceDescriptors] = useState([]); // ảnh base64
   const [modelsReady, setModelsReady] = useState(false);
+  const [verifyError, setVerifyError] = useState('');
 
   // Registration result
   const [registeredUser, setRegisteredUser] = useState(null); // { id, token }
@@ -160,18 +162,41 @@ export default function RegisterPage() {
   }, [faceStep]);
 
   const startFaceEnroll = async () => {
-    setFaceStep('loadingModel');
+    setFaceStep('loadingCamera');
     setFaceMsg('Đang bật camera...');
+    setVerifyError('');
+    idCardDescriptorRef.current = null;
     try {
+      // 1. Bật camera ngay — hiển thị video
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'user', width: 640, height: 480 },
       });
       streamRef.current = stream;
-      setFaceStep('ready');
-      setModelsReady(true); // Không cần model khi đăng ký — chỉ chụp ảnh
+      setFaceStep('loadingModels');
+      setFaceMsg('Đang tải model xác thực (lần đầu ~20s)...');
       setTimeout(() => {
         if (videoRef.current) videoRef.current.srcObject = stream;
       }, 100);
+
+      // 2. Tải models song song với việc hiển thị camera
+      await loadFaceModels((msg) => setFaceMsg(msg));
+
+      // 3. Trích xuất descriptor từ ảnh thẻ SV
+      setFaceStep('verifyingId');
+      setFaceMsg('Đang đọc khuôn mặt từ thẻ sinh viên...');
+      const idDescriptor = await extractDescriptorFromBase64(studentIdImage);
+      if (!idDescriptor) {
+        setFaceStep('error');
+        setFaceMsg('Không tìm thấy khuôn mặt trong ảnh thẻ sinh viên. Quay lại bước 2 và tải ảnh thẻ rõ hơn.');
+        streamRef.current?.getTracks().forEach(t => t.stop());
+        return;
+      }
+      idCardDescriptorRef.current = idDescriptor;
+
+      // 4. Sẵn sàng chụp
+      setFaceStep('ready');
+      setModelsReady(true);
+      setFaceMsg('');
     } catch (err) {
       setFaceStep('error');
       setFaceMsg(
@@ -182,18 +207,34 @@ export default function RegisterPage() {
     }
   };
 
-  const captureAngle = () => {
+  const captureAngle = async () => {
     setFaceStep('capturing');
+    setVerifyError('');
     const video = videoRef.current;
     const canvas = canvasRef.current;
     canvas.width = video.videoWidth || 640;
     canvas.height = video.videoHeight || 480;
-    // Mirror horizontally (khớp với video đang mirror)
     const ctx = canvas.getContext('2d');
     ctx.translate(canvas.width, 0);
     ctx.scale(-1, 1);
     ctx.drawImage(video, 0, 0);
     ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+    // Xác minh khuôn mặt khớp với thẻ SV
+    const liveDescriptor = await detectFaceDescriptor(canvas);
+    if (!liveDescriptor) {
+      setVerifyError('Không phát hiện khuôn mặt. Nhìn thẳng vào camera và thử lại.');
+      setFaceStep('ready');
+      return;
+    }
+
+    const { match, confidence } = compareTwoDescriptors(liveDescriptor, idCardDescriptorRef.current);
+    if (!match) {
+      setVerifyError(`Khuôn mặt không khớp với ảnh thẻ sinh viên (${confidence}%). Vui lòng thử lại.`);
+      setFaceStep('ready');
+      return;
+    }
+
     const imgData = canvas.toDataURL('image/jpeg', 0.85);
     const newList = [...faceDescriptors, imgData];
     setFaceDescriptors(newList);
@@ -227,9 +268,14 @@ export default function RegisterPage() {
       // 3. Save student ID card
       await biometricAPI.saveStudentId({ imageBase64: studentIdImage });
 
-      // 4. Save face images (descriptors generated lazily on first check-in)
+      // 4. Save face data: ảnh + idCardDescriptor (đã xác minh khớp thẻ SV)
       if (faceDescriptors.length > 0) {
-        await biometricAPI.saveFace({ images: faceDescriptors });
+        await biometricAPI.saveFace({
+          images: faceDescriptors,
+          idCardDescriptor: idCardDescriptorRef.current
+            ? Array.from(idCardDescriptorRef.current)
+            : null,
+        });
       }
 
       setStep(4);
@@ -466,16 +512,20 @@ export default function RegisterPage() {
               ))}
             </div>
 
-            {/* Camera / result */}
-            {faceStep === 'loadingModel' && (
+            {/* Camera / loading states */}
+            {(faceStep === 'loadingCamera' || faceStep === 'loadingModels' || faceStep === 'verifyingId') && (
               <div className="flex flex-col items-center gap-4 py-10 bg-gray-900 rounded-xl px-6" style={{ minHeight: '220px' }}>
                 <div className="w-12 h-12 border-4 border-violet-400 border-t-transparent rounded-full animate-spin mt-4" />
-                <p className="text-white text-sm text-center">{faceMsg || 'Đang bật camera...'}</p>
+                <p className="text-white text-sm text-center">{faceMsg}</p>
+                {faceStep === 'verifyingId' && (
+                  <p className="text-violet-300 text-xs text-center">Đang xác minh ảnh thẻ sinh viên...</p>
+                )}
               </div>
             )}
 
             {faceStep === 'error' && (
               <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-center">
+                <AlertCircle size={28} className="text-red-400 mx-auto mb-2"/>
                 <p className="text-red-600 text-sm">{faceMsg}</p>
                 <button onClick={startFaceEnroll} className="mt-3 bg-red-500 text-white px-4 py-2 rounded-lg text-sm">Thử lại</button>
               </div>
@@ -488,31 +538,29 @@ export default function RegisterPage() {
 
                   {/* Face oval guide */}
                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <div className="w-36 h-44 border-4 border-violet-400 rounded-full opacity-70" />
+                    <div className={`w-36 h-44 border-4 rounded-full opacity-70 ${verifyError ? 'border-red-400' : 'border-violet-400'}`} />
                   </div>
 
-                  {/* Model loading overlay — hiện khi camera đã bật nhưng model chưa xong */}
-                  {!modelsReady && (
-                    <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center gap-2 pointer-events-none">
-                      <div className="w-7 h-7 border-3 border-white border-t-transparent rounded-full animate-spin" style={{ borderWidth: 3 }} />
-                      <p className="text-white text-xs px-3 text-center">{faceMsg || 'Đang tải model...'}</p>
-                    </div>
-                  )}
-
-                  {/* Angle label + capture button */}
+                  {/* Capture button */}
                   <div className="absolute bottom-3 left-0 right-0 flex flex-col items-center gap-1.5">
-                    {modelsReady && (
-                      <p className="bg-black/50 text-white text-xs px-3 py-1 rounded-full">{FACE_ANGLES[capturedCount]}</p>
-                    )}
+                    <p className="bg-black/50 text-white text-xs px-3 py-1 rounded-full">{FACE_ANGLES[capturedCount]}</p>
                     <button
                       onClick={captureAngle}
-                      disabled={!modelsReady || faceStep === 'capturing'}
+                      disabled={faceStep === 'capturing'}
                       className="w-14 h-14 bg-white rounded-full shadow-lg flex items-center justify-center border-4 border-violet-500 active:scale-95 transition-transform disabled:opacity-40 disabled:scale-100"
                     >
                       <Camera size={24} className="text-violet-500" />
                     </button>
                   </div>
                 </div>
+
+                {/* Verify error message */}
+                {verifyError && (
+                  <div className="mt-2 flex items-start gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2.5">
+                    <AlertCircle size={16} className="text-red-500 shrink-0 mt-0.5"/>
+                    <p className="text-red-600 text-xs">{verifyError}</p>
+                  </div>
+                )}
                 <canvas ref={canvasRef} className="hidden" />
               </div>
             )}
@@ -526,7 +574,7 @@ export default function RegisterPage() {
             )}
 
             <div className="flex gap-3">
-              <button onClick={() => { streamRef.current?.getTracks().forEach(t => t.stop()); setStep(2); setCapturedCount(0); setFaceDescriptors([]); setFaceStep('init'); setModelsReady(false); setFaceMsg(''); }}
+              <button onClick={() => { streamRef.current?.getTracks().forEach(t => t.stop()); setStep(2); setCapturedCount(0); setFaceDescriptors([]); setFaceStep('init'); setModelsReady(false); setFaceMsg(''); setVerifyError(''); idCardDescriptorRef.current = null; }}
                 className="flex-1 border border-gray-300 text-gray-600 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-50">
                 Quay lại
               </button>

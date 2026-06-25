@@ -1,7 +1,7 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react';
 import { Camera, RotateCcw, X, Loader, MapPin, AlertTriangle, Navigation, ShieldCheck, ShieldX, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { attendanceAPI, biometricAPI } from '../services/api';
-import { loadFaceModels, detectFaceDescriptor, matchDescriptor, extractDescriptorFromBase64 } from '../utils/faceUtils';
+import { loadFaceModels, detectFaceDescriptor, matchDescriptor, extractDescriptorFromBase64, compareTwoDescriptors } from '../utils/faceUtils';
 import GeofenceMap from './GeofenceMap';
 
 const SCHOOL_LOCATION = {
@@ -34,7 +34,8 @@ export default function AttendanceModal({ classId, onClose, onSuccess }) {
   const [cameraError, setCameraError] = useState('');
   const [capturedImage, setCapturedImage] = useState(null);
   const [faceMsg, setFaceMsg] = useState('');
-  const [storedDescriptors, setStoredDescriptors] = useState(null); // null = not loaded yet
+  const [storedDescriptors, setStoredDescriptors] = useState(null);
+  const [idCardDescriptor, setIdCardDescriptor] = useState(null); // chuẩn xác minh thẻ SV
   const [result, setResult] = useState(null);
 
   // ── GPS ──────────────────────────────────────────────
@@ -82,7 +83,7 @@ export default function AttendanceModal({ classId, onClose, onSuccess }) {
     return () => { if (step === 'camera') stopCamera(); };
   }, [step, startCamera, stopCamera]);
 
-  // ── Chuyển sang camera: tải model + lấy face data ───
+  // ── Chuyển sang camera: tải model + lấy idCardDescriptor ───
   const proceedToCamera = async () => {
     setStep('loadingFace');
     try {
@@ -90,36 +91,49 @@ export default function AttendanceModal({ classId, onClose, onSuccess }) {
       const faceData = res.data.enrolled ? res.data.faceData : null;
 
       if (!faceData) {
-        // Chưa đăng ký khuôn mặt → bỏ qua nhận diện
+        // Chưa đăng ký → cho điểm danh nhưng không xác minh mặt
         setStoredDescriptors([]);
+        setIdCardDescriptor(null);
         setStep('camera');
         return;
       }
 
-      if (faceData.descriptors?.length) {
-        // Đã có descriptor cached → dùng trực tiếp, không cần tải model trước
-        setStoredDescriptors(faceData.descriptors);
-        setStep('camera');
-        return;
-      }
-
-      if (faceData.images?.length) {
-        // Lần đầu check-in sau khi đăng ký ảnh → tải model + trích xuất descriptor
-        setFaceMsg('Lần đầu: đang xử lý khuôn mặt (30s)...');
+      // Ưu tiên dùng idCardDescriptor (chuẩn từ thẻ SV) nếu có
+      if (faceData.idCardDescriptor) {
+        setIdCardDescriptor(faceData.idCardDescriptor);
+        // Cũng load model để nhận diện live face khi chụp
         await loadFaceModels((msg) => setFaceMsg(msg));
-        setFaceMsg('Đang trích xuất dữ liệu sinh trắc học...');
+        setFaceMsg('');
+        setStoredDescriptors(faceData.descriptors || []);
+        setStep('camera');
+        return;
+      }
+
+      // Fallback: dùng descriptors cũ (tài khoản đăng ký trước khi có tính năng này)
+      if (faceData.descriptors?.length) {
+        setStoredDescriptors(faceData.descriptors);
+        await loadFaceModels((msg) => setFaceMsg(msg));
+        setFaceMsg('');
+        setStep('camera');
+        return;
+      }
+
+      // Fallback: chỉ có ảnh → trích xuất descriptor
+      if (faceData.images?.length) {
+        setFaceMsg('Đang xử lý dữ liệu khuôn mặt...');
+        await loadFaceModels((msg) => setFaceMsg(msg));
+        setFaceMsg('Đang trích xuất...');
         const descriptors = [];
         for (const img of faceData.images) {
           const d = await extractDescriptorFromBase64(img);
           if (d) descriptors.push(d);
         }
         if (descriptors.length) {
-          // Cache descriptors để lần sau dùng ngay không cần tải lại
           biometricAPI.saveFace({ descriptors }).catch(() => {});
         }
         setStoredDescriptors(descriptors);
-        setStep('camera');
         setFaceMsg('');
+        setStep('camera');
         return;
       }
 
@@ -144,29 +158,44 @@ export default function AttendanceModal({ classId, onClose, onSuccess }) {
     setCapturedImage(imgData);
     setStep('verifying');
 
-    // Face recognition
-    if (storedDescriptors && storedDescriptors.length > 0) {
-      setFaceMsg('Đang nhận diện khuôn mặt...');
+    const hasIdCard = idCardDescriptor && idCardDescriptor.length > 0;
+    const hasFallback = storedDescriptors && storedDescriptors.length > 0;
+
+    if (hasIdCard || hasFallback) {
+      setFaceMsg('Đang xác minh khuôn mặt...');
       const liveDescriptor = await detectFaceDescriptor(canvas);
       if (!liveDescriptor) {
-        setResult({ success: false, message: 'Không phát hiện khuôn mặt. Vui lòng thử lại với ánh sáng tốt hơn.', faceResult: null });
+        setResult({
+          success: false,
+          message: 'Không phát hiện khuôn mặt. Vui lòng đảm bảo đủ ánh sáng và thử lại.',
+          faceResult: null,
+        });
         setStep('result');
         return;
       }
-      const { match, confidence, distance } = matchDescriptor(liveDescriptor, storedDescriptors);
+
+      let match, confidence, distance;
+
+      if (hasIdCard) {
+        // So sánh với khuôn mặt trên thẻ SV (chuẩn chính)
+        ({ match, confidence, distance } = compareTwoDescriptors(liveDescriptor, idCardDescriptor));
+      } else {
+        // Fallback: so sánh với ảnh đã đăng ký (tài khoản cũ)
+        ({ match, confidence, distance } = matchDescriptor(liveDescriptor, storedDescriptors));
+      }
+
       if (!match) {
         setResult({
           success: false,
-          message: `Khuôn mặt không khớp (độ tương đồng: ${confidence}%). Điểm danh bị từ chối.`,
+          message: `Khuôn mặt không khớp với thẻ sinh viên (${confidence}%). Điểm danh bị từ chối.`,
           faceResult: { match: false, confidence, distance },
         });
         setStep('result');
         return;
       }
-      // Face matched → submit check-in
       await submitCheckin(imgData, confidence);
     } else {
-      // No face data enrolled → skip face check, submit directly
+      // Chưa đăng ký khuôn mặt → cho qua
       await submitCheckin(imgData, null);
     }
   };

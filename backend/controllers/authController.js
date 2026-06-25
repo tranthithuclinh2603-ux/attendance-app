@@ -275,21 +275,24 @@ const loginWebAuthn = async (req, res) => {
 const saveFaceDescriptors = async (req, res) => {
   try {
     const { uid } = req.user;
-    const { descriptors, images, enrolledAt } = req.body;
+    const { descriptors, images, idCardDescriptor, enrolledAt } = req.body;
     const data = { enrolledAt: enrolledAt || new Date().toISOString() };
+
     if (images && images.length) {
-      // Lưu ảnh gốc (đăng ký nhanh, không cần model)
       data.images = images;
       data.type = 'images';
+      // idCardDescriptor: descriptor trích từ ảnh thẻ SV — dùng làm chuẩn so sánh khi điểm danh
+      if (idCardDescriptor) data.idCardDescriptor = idCardDescriptor;
       await db.ref(`users/${uid}/faceData`).set(data);
-      return res.json({ success: true, message: `Đã lưu ${images.length} ảnh khuôn mặt` });
+      return res.json({ success: true, message: `Đã lưu ${images.length} ảnh khuôn mặt (đã xác minh thẻ SV)` });
     }
     if (descriptors && descriptors.length) {
-      // Lưu/cập nhật descriptors (cache sau lần check-in đầu tiên)
+      // Cache descriptors sau lần check-in đầu tiên
       data.descriptors = descriptors;
       data.type = 'descriptors';
+      if (idCardDescriptor) data.idCardDescriptor = idCardDescriptor;
       await db.ref(`users/${uid}/faceData`).update(data);
-      return res.json({ success: true, message: `Đã lưu ${descriptors.length} mẫu nhận diện` });
+      return res.json({ success: true, message: `Đã cập nhật ${descriptors.length} mẫu nhận diện` });
     }
     return res.status(400).json({ success: false, message: 'Thiếu dữ liệu khuôn mặt' });
   } catch (err) {

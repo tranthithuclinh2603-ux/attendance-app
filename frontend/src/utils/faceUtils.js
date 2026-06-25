@@ -22,7 +22,7 @@ export async function loadFaceModels(onProgress) {
   return loadingPromise;
 }
 
-// Trích xuất descriptor từ ảnh base64 (dùng khi check-in)
+// Trích xuất descriptor từ ảnh base64
 export async function extractDescriptorFromBase64(base64) {
   return new Promise((resolve) => {
     const img = new Image();
@@ -30,8 +30,17 @@ export async function extractDescriptorFromBase64(base64) {
       const descriptor = await detectFaceDescriptor(img);
       resolve(descriptor);
     };
+    img.onerror = () => resolve(null);
     img.src = base64;
   });
+}
+
+// So sánh 1 descriptor với 1 descriptor (dùng để xác minh thẻ SV)
+export function compareTwoDescriptors(a, b, threshold = 0.55) {
+  if (!a || !b) return { match: false, confidence: 0, distance: 99 };
+  const dist = euclidean(a, b);
+  const confidence = Math.max(0, Math.round((1 - dist / threshold) * 100));
+  return { match: dist < threshold, distance: +dist.toFixed(3), confidence };
 }
 
 export async function detectFaceDescriptor(source) {
