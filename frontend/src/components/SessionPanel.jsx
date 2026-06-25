@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { PlayCircle, StopCircle, RefreshCw, Download, ChevronDown, ChevronUp, Calendar, Clock, MapPin, CheckCircle, XCircle } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { PlayCircle, StopCircle, RefreshCw, Download, ChevronDown, ChevronUp, Calendar, Clock, MapPin, CheckCircle, XCircle, Upload, FileSpreadsheet, AlertCircle } from 'lucide-react';
 import { sessionAPI, timetableAPI } from '../services/api';
+import * as XLSX from 'xlsx';
 
 const SCHOOL = { lat: 10.813308852984058, lng: 106.77209163591941 };
 
@@ -263,12 +264,33 @@ function SessionCard({ session, onClose, onRefresh }) {
   );
 }
 
+// ── Mapping Excel → dữ liệu TKB ───────────────────────
+const DAY_MAP = {
+  '2': 2, 'thu 2': 2, 'thứ 2': 2, 'thu hai': 2, 'thứ hai': 2, 'monday': 2, 'mon': 2,
+  '3': 3, 'thu 3': 3, 'thứ 3': 3, 'thu ba': 3, 'thứ ba': 3, 'tuesday': 3, 'tue': 3,
+  '4': 4, 'thu 4': 4, 'thứ 4': 4, 'thu tu': 4, 'thứ tư': 4, 'wednesday': 4, 'wed': 4,
+  '5': 5, 'thu 5': 5, 'thứ 5': 5, 'thu nam': 5, 'thứ năm': 5, 'thursday': 5, 'thu': 5,
+  '6': 6, 'thu 6': 6, 'thứ 6': 6, 'thu sau': 6, 'thứ sáu': 6, 'friday': 6, 'fri': 6,
+  '7': 7, 'thu 7': 7, 'thứ 7': 7, 'thu bay': 7, 'thứ bảy': 7, 'saturday': 7, 'sat': 7,
+};
+const PERIOD_MAP = {
+  '1': 1, 'ca 1': 1, 'ca1': 1, '1st': 1,
+  '2': 2, 'ca 2': 2, 'ca2': 2, '2nd': 2,
+  '3': 3, 'ca 3': 3, 'ca3': 3, '3rd': 3,
+  '4': 4, 'ca 4': 4, 'ca4': 4, '4th': 4,
+};
+function parseDay(val) { return DAY_MAP[String(val ?? '').toLowerCase().trim()] ?? null; }
+function parsePeriod(val) { return PERIOD_MAP[String(val ?? '').toLowerCase().trim()] ?? null; }
+
 // ── Thẻ TKB ────────────────────────────────────────────
 function TimetableEditor({ classId }) {
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [msg, setMsg] = useState('');
+  const [msg, setMsg] = useState({ text: '', ok: true });
+  const [importPreview, setImportPreview] = useState(null); // rows từ Excel chờ xác nhận
+  const [importError, setImportError] = useState('');
+  const fileRef = useRef();
 
   const DAY_LABELS = ['', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'CN'];
 
@@ -283,39 +305,215 @@ function TimetableEditor({ classId }) {
   const addEntry = () => {
     setEntries(prev => [...prev, { dayOfWeek: 2, period: 1, subject: '', startTime: '07:00', endTime: '09:30', lateAfterMinutes: 15 }]);
   };
-
   const updateEntry = (i, field, value) => {
     setEntries(prev => prev.map((e, idx) => idx === i ? { ...e, [field]: value } : e));
   };
-
   const removeEntry = (i) => setEntries(prev => prev.filter((_, idx) => idx !== i));
 
-  const handleSave = async () => {
-    setSaving(true); setMsg('');
+  const showMsg = (text, ok = true) => {
+    setMsg({ text, ok });
+    setTimeout(() => setMsg({ text: '', ok: true }), 3000);
+  };
+
+  const handleSave = async (entriesToSave = entries) => {
+    setSaving(true);
     try {
-      await timetableAPI.save(classId, entries);
-      setMsg('Đã lưu thời khóa biểu');
-      setTimeout(() => setMsg(''), 2500);
+      await timetableAPI.save(classId, entriesToSave);
+      showMsg(`Đã lưu ${entriesToSave.length} ca học`);
+      setImportPreview(null);
     } catch (err) {
-      setMsg(err.response?.data?.message || 'Lỗi lưu TKB');
+      showMsg(err.response?.data?.message || 'Lỗi lưu TKB', false);
     } finally {
       setSaving(false);
     }
   };
 
+  // ── Tải file mẫu Excel ─────────────────────────────
+  const downloadTemplate = () => {
+    const wb = XLSX.utils.book_new();
+    const data = [
+      ['Thu', 'Ca', 'Mon hoc', 'Gio bat dau', 'Gio ket thuc'],
+      [2, 1, 'Lap trinh Web', '07:00', '09:30'],
+      [2, 2, 'Co so du lieu', '09:45', '12:15'],
+      [3, 1, 'Tieng Anh', '07:00', '09:30'],
+      [4, 3, 'Lap trinh Mobile', '12:45', '15:15'],
+      [5, 2, 'Quan tri mang', '09:45', '12:15'],
+      [6, 4, 'Do an tot nghiep', '15:30', '18:00'],
+    ];
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    ws['!cols'] = [{ wch: 10 }, { wch: 6 }, { wch: 25 }, { wch: 14 }, { wch: 14 }];
+
+    // Ghi chú hướng dẫn ở sheet 2
+    const guide = [
+      ['HUONG DAN DIEN FILE TKB'],
+      [''],
+      ['Cot Thu:', '2=Thu 2, 3=Thu 3, 4=Thu 4, 5=Thu 5, 6=Thu 6, 7=Thu 7'],
+      ['Cot Ca:', '1=Ca1 (07:00-09:30), 2=Ca2 (09:45-12:15), 3=Ca3 (12:45-15:15), 4=Ca4 (15:30-18:00)'],
+      ['Cot Mon hoc:', 'Ten mon hoc chinh xac'],
+      ['Cot Gio bat dau:', 'Dinh dang HH:MM, vi du 07:00 (co the bo trong de dung mac dinh theo ca)'],
+      ['Cot Gio ket thuc:', 'Dinh dang HH:MM, vi du 09:30 (co the bo trong de dung mac dinh theo ca)'],
+      [''],
+      ['Luu y:', 'Co the them nhieu dong, moi dong la 1 ca hoc trong tuan'],
+    ];
+    const ws2 = XLSX.utils.aoa_to_sheet(guide);
+    ws2['!cols'] = [{ wch: 20 }, { wch: 60 }];
+
+    XLSX.utils.book_append_sheet(wb, ws, 'ThoiKhoaBieu');
+    XLSX.utils.book_append_sheet(wb, ws2, 'HuongDan');
+    XLSX.writeFile(wb, `mau_tkb_${classId}.xlsx`);
+  };
+
+  // ── Đọc file Excel TKB ─────────────────────────────
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImportError('');
+    setImportPreview(null);
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const wb = XLSX.read(ev.target.result, { type: 'binary' });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+
+        // Bỏ hàng tiêu đề
+        const dataRows = rows.slice(1).filter(r => r.some(c => c !== ''));
+        if (!dataRows.length) { setImportError('File không có dữ liệu hoặc sai định dạng.'); return; }
+
+        const parsed = [];
+        const errors = [];
+        dataRows.forEach((row, idx) => {
+          const [rawDay, rawPeriod, subject, startTime, endTime] = row;
+          const dayOfWeek = parseDay(rawDay);
+          const period = parsePeriod(rawPeriod);
+
+          if (!dayOfWeek) { errors.push(`Dòng ${idx + 2}: Thứ "${rawDay}" không hợp lệ`); return; }
+          if (!period) { errors.push(`Dòng ${idx + 2}: Ca "${rawPeriod}" không hợp lệ`); return; }
+          if (!String(subject || '').trim()) { errors.push(`Dòng ${idx + 2}: Thiếu tên môn học`); return; }
+
+          const periodDefault = PERIODS.find(p => p.period === period);
+          parsed.push({
+            dayOfWeek,
+            period,
+            subject: String(subject).trim(),
+            startTime: String(startTime || '').trim() || periodDefault?.startTime || '07:00',
+            endTime: String(endTime || '').trim() || periodDefault?.endTime || '09:30',
+            lateAfterMinutes: 15,
+          });
+        });
+
+        if (!parsed.length) {
+          setImportError('Không đọc được dòng nào hợp lệ.\n' + errors.slice(0, 3).join('\n'));
+          return;
+        }
+        setImportPreview({ rows: parsed, errors });
+      } catch {
+        setImportError('Không đọc được file. Vui lòng dùng đúng file Excel mẫu.');
+      }
+      // Reset input
+      if (fileRef.current) fileRef.current.value = '';
+    };
+    reader.readAsBinaryString(file);
+  };
+
   if (loading) return <div className="py-8 text-center text-gray-400 text-sm">Đang tải TKB...</div>;
+
+  // ── Preview sau khi import ──────────────────────────
+  if (importPreview) {
+    const DAY_LABELS_SHORT = ['', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+    return (
+      <div className="p-4 space-y-3">
+        <div className="flex items-center gap-2">
+          <FileSpreadsheet size={18} className="text-green-600" />
+          <p className="font-semibold text-sm text-gray-800 dark:text-white">Xem trước — {importPreview.rows.length} ca học từ file</p>
+        </div>
+
+        {importPreview.errors.length > 0 && (
+          <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg p-3">
+            <p className="text-xs font-semibold text-yellow-700 dark:text-yellow-400 mb-1">Bỏ qua {importPreview.errors.length} dòng lỗi:</p>
+            {importPreview.errors.slice(0, 3).map((e, i) => <p key={i} className="text-xs text-yellow-600 dark:text-yellow-400">{e}</p>)}
+            {importPreview.errors.length > 3 && <p className="text-xs text-yellow-500">...và {importPreview.errors.length - 3} dòng khác</p>}
+          </div>
+        )}
+
+        <div className="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <table className="w-full text-xs">
+            <thead className="bg-gray-50 dark:bg-gray-800">
+              <tr>
+                {['Thứ', 'Ca', 'Môn học', 'Giờ'].map(h => (
+                  <th key={h} className="px-3 py-2 text-left text-gray-500 dark:text-gray-400 font-semibold">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+              {importPreview.rows.map((r, i) => (
+                <tr key={i} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                  <td className="px-3 py-2 font-medium text-gray-700 dark:text-gray-300">{DAY_LABELS_SHORT[r.dayOfWeek]}</td>
+                  <td className="px-3 py-2 text-gray-500 dark:text-gray-400">Ca {r.period}</td>
+                  <td className="px-3 py-2 text-gray-800 dark:text-white">{r.subject}</td>
+                  <td className="px-3 py-2 text-gray-500 dark:text-gray-400">{r.startTime}–{r.endTime}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="flex gap-2">
+          <button onClick={() => setImportPreview(null)}
+            className="flex-1 border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 py-2.5 rounded-lg text-sm hover:bg-gray-50 dark:hover:bg-gray-700">
+            Hủy
+          </button>
+          <button onClick={() => { setEntries(importPreview.rows); handleSave(importPreview.rows); }} disabled={saving}
+            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg text-sm font-semibold disabled:opacity-60">
+            {saving ? 'Đang lưu...' : `Lưu ${importPreview.rows.length} ca học`}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 space-y-3">
-      <div className="flex items-center justify-between">
-        <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Thời khóa biểu lớp {classId}</p>
-        <button onClick={addEntry} className="text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-1.5 rounded-lg font-medium">+ Thêm ca</button>
+      {/* Header + actions */}
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 truncate">TKB lớp {classId}</p>
+        <div className="flex gap-1.5 shrink-0">
+          <button onClick={downloadTemplate}
+            className="flex items-center gap-1 text-xs bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-300 text-gray-600 px-2.5 py-1.5 rounded-lg font-medium">
+            <Download size={12} /> Tải mẫu
+          </button>
+          <label className="flex items-center gap-1 text-xs bg-green-100 hover:bg-green-200 text-green-700 dark:bg-green-900/30 dark:text-green-400 px-2.5 py-1.5 rounded-lg font-medium cursor-pointer">
+            <Upload size={12} /> Import Excel
+            <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleFileChange} />
+          </label>
+          <button onClick={addEntry}
+            className="text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 px-2.5 py-1.5 rounded-lg font-medium">
+            + Thêm
+          </button>
+        </div>
       </div>
 
+      {/* Hướng dẫn import khi chưa có TKB */}
       {entries.length === 0 && (
-        <p className="text-center text-gray-400 text-sm py-4">Chưa có TKB. Nhấn "+ Thêm ca" để bắt đầu.</p>
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-xl p-4 text-center space-y-2">
+          <FileSpreadsheet size={28} className="mx-auto text-blue-400" />
+          <p className="text-sm font-medium text-blue-700 dark:text-blue-300">Chưa có thời khóa biểu</p>
+          <p className="text-xs text-blue-500 dark:text-blue-400">
+            Nhấn <strong>Tải mẫu</strong> để tải file Excel, điền TKB vào rồi nhấn <strong>Import Excel</strong>
+          </p>
+          <p className="text-xs text-blue-400">Hoặc nhấn <strong>+ Thêm</strong> để nhập tay từng ca</p>
+        </div>
       )}
 
+      {importError && (
+        <div className="flex gap-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg p-3">
+          <AlertCircle size={15} className="text-red-500 shrink-0 mt-0.5" />
+          <p className="text-xs text-red-600 dark:text-red-400 whitespace-pre-line">{importError}</p>
+        </div>
+      )}
+
+      {/* Danh sách ca */}
       <div className="space-y-2">
         {entries.map((e, i) => (
           <div key={i} className="grid grid-cols-2 gap-2 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
@@ -346,11 +544,13 @@ function TimetableEditor({ classId }) {
         ))}
       </div>
 
-      {msg && <p className={`text-xs ${msg.includes('Lỗi') ? 'text-red-500' : 'text-green-600'}`}>{msg}</p>}
+      {msg.text && (
+        <p className={`text-xs text-center ${msg.ok ? 'text-green-600' : 'text-red-500'}`}>{msg.text}</p>
+      )}
       {entries.length > 0 && (
-        <button onClick={handleSave} disabled={saving}
+        <button onClick={() => handleSave()} disabled={saving}
           className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg text-sm font-semibold disabled:opacity-60">
-          {saving ? 'Đang lưu...' : 'Lưu thời khóa biểu'}
+          {saving ? 'Đang lưu...' : `Lưu ${entries.length} ca học`}
         </button>
       )}
     </div>
