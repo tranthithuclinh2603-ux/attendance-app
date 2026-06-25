@@ -171,7 +171,7 @@ export default function FaceEnrollModal({ onClose, onEnrolled }) {
 
           {step === 'done' && (
             <div className="bg-green-50 dark:bg-green-900/20 rounded-xl p-3 text-center">
-              <p className="text-green-700 dark:text-green-300 font-semibold">✅ Đã chụp đủ {ANGLES.length} góc!</p>
+              <p className="text-green-700 dark:text-green-300 font-semibold">Đã chụp đủ {ANGLES.length} góc!</p>
               {msg && <p className="text-red-500 text-xs mt-1">{msg}</p>}
             </div>
           )}
@@ -188,7 +188,7 @@ export default function FaceEnrollModal({ onClose, onEnrolled }) {
                 disabled={saving}
                 className="flex-1 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-sm font-semibold disabled:opacity-60 flex items-center justify-center gap-2"
               >
-                {saving ? <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Đang lưu...</> : '💾 Lưu khuôn mặt'}
+                {saving ? <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Đang lưu...</> : 'Lưu khuôn mặt'}
               </button>
             ) : (
               <button

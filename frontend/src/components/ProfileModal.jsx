@@ -55,10 +55,10 @@ export default function ProfileModal({ user, onClose, onUpdateName, onUpdateAvat
     try {
       await authAPI.updateProfile({ name: name.trim() });
       onUpdateName?.(name.trim());
-      showMsg('✅ Cập nhật tên thành công!');
+      showMsg('Cập nhật tên thành công!');
       setEditingName(false);
     } catch {
-      showMsg('❌ Cập nhật thất bại', false);
+      showMsg('Cập nhật thất bại', false);
     } finally {
       setSaving(false);
     }
@@ -95,10 +95,10 @@ export default function ProfileModal({ user, onClose, onUpdateName, onUpdateAvat
     try {
       await authAPI.updateClass({ classId: selectedClass });
       onUpdateClass?.(selectedClass);
-      showMsg('✅ Cập nhật lớp thành công!');
+      showMsg('Cập nhật lớp thành công!');
       setEditingClass(false);
     } catch {
-      showMsg('❌ Cập nhật lớp thất bại', false);
+      showMsg('Cập nhật lớp thất bại', false);
     } finally {
       setSavingClass(false);
     }
@@ -107,7 +107,7 @@ export default function ProfileModal({ user, onClose, onUpdateName, onUpdateAvat
   const handleAvatarChange = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (!file.type.startsWith('image/')) { showMsg('❌ Vui lòng chọn file ảnh', false); return; }
+    if (!file.type.startsWith('image/')) { showMsg('Vui lòng chọn file ảnh', false); return; }
 
     setAvatarLoading(true);
     try {
@@ -115,9 +115,9 @@ export default function ProfileModal({ user, onClose, onUpdateName, onUpdateAvat
       await authAPI.updateAvatar({ avatar: base64 });
       setLocalAvatar(base64);
       onUpdateAvatar?.(base64);
-      showMsg('✅ Cập nhật ảnh thành công!');
+      showMsg('Cập nhật ảnh thành công!');
     } catch {
-      showMsg('❌ Tải ảnh thất bại', false);
+      showMsg('Tải ảnh thất bại', false);
     } finally {
       setAvatarLoading(false);
       // Reset input so same file can be re-selected
@@ -164,7 +164,7 @@ export default function ProfileModal({ user, onClose, onUpdateName, onUpdateAvat
             <p className="text-xs text-blue-100">Bấm vào ảnh để thay đổi</p>
             <p className="font-semibold text-lg">{user?.name}</p>
             <span className="bg-white/20 text-xs px-3 py-1 rounded-full">
-              {user?.role === 'teacher' ? '👩‍🏫 Giảng viên' : '🎓 Sinh viên'}
+              {user?.role === 'teacher' ? 'Giảng viên' : 'Sinh viên'}
             </span>
           </div>
         </div>

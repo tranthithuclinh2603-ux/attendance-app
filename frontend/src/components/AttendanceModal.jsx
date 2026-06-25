@@ -1,5 +1,5 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react';
-import { Camera, RotateCcw, Check, X, Loader, MapPin, AlertTriangle, Navigation, ShieldCheck, ShieldX } from 'lucide-react';
+import { Camera, RotateCcw, X, Loader, MapPin, AlertTriangle, Navigation, ShieldCheck, ShieldX, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { attendanceAPI, biometricAPI } from '../services/api';
 import { loadFaceModels, detectFaceDescriptor, matchDescriptor, extractDescriptorFromBase64 } from '../utils/faceUtils';
 import GeofenceMap from './GeofenceMap';
@@ -217,9 +217,9 @@ export default function AttendanceModal({ classId, onClose, onSuccess }) {
       {gpsStatus === 'success' && gpsData && (
         <div>
           <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-4">
-            <div className="flex items-center gap-2 mb-2"><span className="text-2xl">✅</span><p className="font-semibold text-green-700">Trong phạm vi cho phép</p></div>
-            <p className="text-sm text-gray-600">📍 Khoảng cách: <span className="font-medium text-green-600">{gpsData.distance}m</span> (tối đa {SCHOOL_LOCATION.radius}m)</p>
-            <p className="text-sm text-gray-600">🎯 Độ chính xác GPS: ±{gpsData.accuracy}m</p>
+            <div className="flex items-center gap-2 mb-2"><CheckCircle size={20} className="text-green-500"/><p className="font-semibold text-green-700">Trong phạm vi cho phép</p></div>
+            <p className="text-sm text-gray-600 flex items-center gap-1"><MapPin size={12} className="text-gray-400"/> Khoảng cách: <span className="font-medium text-green-600 ml-1">{gpsData.distance}m</span><span className="ml-1">(tối đa {SCHOOL_LOCATION.radius}m)</span></p>
+            <p className="text-sm text-gray-600">Độ chính xác GPS: ±{gpsData.accuracy}m</p>
           </div>
           <div className="flex gap-2">
             <button onClick={() => setShowMap(true)} className="flex-none bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 px-4 rounded-xl text-sm font-medium flex items-center gap-2">
@@ -235,8 +235,8 @@ export default function AttendanceModal({ classId, onClose, onSuccess }) {
       {gpsStatus === 'outOfRange' && gpsData && (
         <div>
           <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-4">
-            <div className="flex items-center gap-2 mb-2"><span className="text-2xl">❌</span><p className="font-semibold text-red-700">Ngoài phạm vi trường</p></div>
-            <p className="text-sm text-gray-600">📍 Khoảng cách: <span className="font-medium text-red-600">{gpsData.distance}m</span> (tối đa {SCHOOL_LOCATION.radius}m)</p>
+            <div className="flex items-center gap-2 mb-2"><XCircle size={20} className="text-red-500"/><p className="font-semibold text-red-700">Ngoài phạm vi trường</p></div>
+            <p className="text-sm text-gray-600 flex items-center gap-1"><MapPin size={12} className="text-gray-400"/> Khoảng cách: <span className="font-medium text-red-600 ml-1">{gpsData.distance}m</span><span className="ml-1">(tối đa {SCHOOL_LOCATION.radius}m)</span></p>
             <p className="text-sm text-red-600 mt-1 font-medium">Bạn cần có mặt tại trường để điểm danh.</p>
           </div>
           <div className="flex gap-2">
@@ -377,7 +377,7 @@ export default function AttendanceModal({ classId, onClose, onSuccess }) {
               )}
 
               <div className={`flex flex-col items-center gap-3 py-4 text-center rounded-xl ${result.success ? (result.status === 'late' ? 'bg-yellow-50' : 'bg-green-50') : 'bg-red-50'}`}>
-                <div className="text-5xl">{result.success ? (result.status === 'late' ? '⏰' : '✅') : '❌'}</div>
+                <div>{result.success ? (result.status === 'late' ? <Clock size={44} className="text-yellow-500"/> : <CheckCircle size={44} className="text-green-500"/>) : <XCircle size={44} className="text-red-500"/>}</div>
                 <p className={`font-semibold ${result.success ? (result.status === 'late' ? 'text-yellow-600' : 'text-green-600') : 'text-red-600'}`}>
                   {result.message}
                 </p>

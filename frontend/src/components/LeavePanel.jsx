@@ -27,10 +27,10 @@ export default function LeavePanel({ classId }) {
     setProcessing(leaveId + status);
     try {
       const res = await leaveAPI.review(leaveId, { status, note: noteMap[leaveId] || '' });
-      showToast(status === 'approved' ? '✅ Đã duyệt đơn' : '❌ Đã từ chối đơn');
+      showToast(status === 'approved' ? 'Đã duyệt đơn' : 'Đã từ chối đơn');
       if (status === 'approved' && res.data.quota) {
         const q = res.data.quota;
-        if (q.remaining <= 0) showToast(`⚠️ Sinh viên đã dùng hết ${q.max} buổi nghỉ phép (20%)!`);
+        if (q.remaining <= 0) showToast(`Sinh viên đã dùng hết ${q.max} buổi nghỉ phép (20%)!`);
       }
       fetch();
     } catch (err) {
@@ -44,8 +44,8 @@ export default function LeavePanel({ classId }) {
 
   const statusBadge = (s) => ({
     pending: <span className="bg-yellow-100 text-yellow-700 text-xs px-2 py-0.5 rounded-full font-medium">⏳ Chờ duyệt</span>,
-    approved: <span className="bg-green-100 text-green-700 text-xs px-2 py-0.5 rounded-full font-medium">✅ Đã duyệt</span>,
-    rejected: <span className="bg-red-100 text-red-700 text-xs px-2 py-0.5 rounded-full font-medium">❌ Từ chối</span>,
+    approved: <span className="bg-green-100 text-green-700 text-xs px-2 py-0.5 rounded-full font-medium">Đã duyệt</span>,
+    rejected: <span className="bg-red-100 text-red-700 text-xs px-2 py-0.5 rounded-full font-medium">Từ chối</span>,
   }[s]);
 
   return (
@@ -58,7 +58,7 @@ export default function LeavePanel({ classId }) {
 
       <div className="flex items-center justify-between">
         <h4 className="font-semibold text-gray-800 dark:text-white flex items-center gap-2">
-          🏥 Đơn xin nghỉ phép
+          Đơn xin nghỉ phép
           {leaves.filter((l) => l.status === 'pending').length > 0 && (
             <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
               {leaves.filter((l) => l.status === 'pending').length} mới
@@ -116,7 +116,7 @@ export default function LeavePanel({ classId }) {
             {/* Ảnh giấy tờ */}
             {leave.imageBase64 && (
               <div>
-                <p className="text-xs text-gray-400 mb-1">📄 Giấy tờ đính kèm:</p>
+                <p className="text-xs text-gray-400 mb-1">Giấy tờ đính kèm:</p>
                 <img
                   src={leave.imageBase64}
                   alt="giấy tờ"
@@ -129,7 +129,7 @@ export default function LeavePanel({ classId }) {
             {/* Note của GV nếu đã xử lý */}
             {leave.note && (
               <p className="text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-3 py-2 rounded-lg">
-                💬 Ghi chú: {leave.note}
+                Ghi chú: {leave.note}
               </p>
             )}
 

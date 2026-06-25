@@ -3,10 +3,10 @@ import { Trash2, Edit2 } from 'lucide-react';
 import { attendanceAPI } from '../services/api';
 
 const STATUS_CONFIG = {
-  present: { label: 'Có mặt', icon: '✅', color: 'text-green-600 bg-green-50 dark:bg-green-900/30 dark:text-green-400' },
-  late:    { label: 'Muộn',   icon: '⏰', color: 'text-yellow-600 bg-yellow-50 dark:bg-yellow-900/30 dark:text-yellow-400' },
-  absent:  { label: 'Vắng',   icon: '❌', color: 'text-red-600 bg-red-50 dark:bg-red-900/30 dark:text-red-400' },
-  excused: { label: 'Có phép',icon: '📋', color: 'text-indigo-600 bg-indigo-50 dark:bg-indigo-900/30 dark:text-indigo-400' },
+  present: { label: 'Có mặt', color: 'text-green-600 bg-green-50 dark:bg-green-900/30 dark:text-green-400' },
+  late:    { label: 'Muộn',   color: 'text-yellow-600 bg-yellow-50 dark:bg-yellow-900/30 dark:text-yellow-400' },
+  absent:  { label: 'Vắng',   color: 'text-red-600 bg-red-50 dark:bg-red-900/30 dark:text-red-400' },
+  excused: { label: 'Có phép',color: 'text-indigo-600 bg-indigo-50 dark:bg-indigo-900/30 dark:text-indigo-400' },
 };
 
 function EditModal({ record, onSave, onClose }) {
@@ -35,10 +35,10 @@ function EditModal({ record, onSave, onClose }) {
           onChange={(e) => setStatus(e.target.value)}
           className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-3 py-2.5 mb-5 focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
-          <option value="present">✅ Có mặt</option>
-          <option value="late">⏰ Muộn</option>
-          <option value="absent">❌ Vắng</option>
-          <option value="excused">📋 Có phép</option>
+          <option value="present">Có mặt</option>
+          <option value="late">Muộn</option>
+          <option value="absent">Vắng</option>
+          <option value="excused">Có phép</option>
         </select>
         <div className="flex gap-3">
           <button onClick={onClose} className="flex-1 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 dark:text-white py-2.5 rounded-xl text-sm font-medium transition-colors">
@@ -105,7 +105,7 @@ export default function AttendanceTable({ data, onRefresh }) {
                   <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{item.studentId}</td>
                   <td className="px-4 py-3">
                     <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${s.color}`}>
-                      {s.icon} {s.label}
+                      {s.label}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{item.time}</td>

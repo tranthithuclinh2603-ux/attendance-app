@@ -6,12 +6,10 @@ import LeaveModal from './LeaveModal';
 import NavBar from './NavBar';
 
 const STATUS_CONFIG = {
-  present: { label: 'Có mặt', icon: '✅', color: 'text-green-600 bg-green-50' },
-  late: { label: 'Muộn', icon: '⏰', color: 'text-yellow-600 bg-yellow-50' },
-  absent: { label: 'Vắng', icon: '❌', color: 'text-red-600 bg-red-50' },
+  present: { label: 'Có mặt', color: 'text-green-600 bg-green-50' },
+  late: { label: 'Muộn', color: 'text-yellow-600 bg-yellow-50' },
+  absent: { label: 'Vắng', color: 'text-red-600 bg-red-50' },
 };
-
-const MEDALS = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟'];
 
 function Toast({ message, type, onClose }) {
   useEffect(() => {
@@ -95,7 +93,7 @@ function WeekChart({ history }) {
               ${d.status === 'present' ? 'bg-green-100 text-green-600' :
                 d.status === 'late' ? 'bg-yellow-100 text-yellow-600' :
                 d.status === 'absent' ? 'bg-red-100 text-red-500' : 'bg-gray-100 text-gray-400'}`}>
-              {d.status === 'present' ? '✓' : d.status === 'late' ? '⏰' : d.status === 'absent' ? '✗' : '·'}
+              {d.status === 'present' ? '✓' : d.status === 'late' ? 'M' : d.status === 'absent' ? '✗' : '·'}
             </div>
           </div>
         ))}
@@ -146,9 +144,9 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser }) {
   const handleSuccess = (status) => {
     setShowModal(false);
     if (status === 'late') {
-      showToast('⏰ Điểm danh muộn! Vui lòng đến đúng giờ hơn.', 'warning');
+      showToast('Điểm danh muộn! Vui lòng đến đúng giờ hơn.', 'warning');
     } else {
-      showToast('✅ Điểm danh thành công! Chúc bạn học tốt 🎉');
+      showToast('Điểm danh thành công! Chúc bạn học tốt.');
     }
     fetchHistory();
     fetchLeaderboard();
@@ -172,7 +170,7 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser }) {
         {/* Greeting card */}
         <div className="bg-gradient-to-r from-blue-500 to-blue-700 rounded-2xl p-6 text-white shadow-md">
           <p className="text-blue-100 text-sm mb-1">{today}</p>
-          <h2 className="text-2xl font-bold mb-3">Xin chào, {user?.name}! 👋</h2>
+          <h2 className="text-2xl font-bold mb-3">Xin chào, {user?.name}!</h2>
           <div className="flex flex-wrap gap-3 text-sm mb-4">
             <div className="flex items-center gap-1.5 bg-white/20 px-3 py-1.5 rounded-full">
               <BookOpen size={14} />
@@ -233,9 +231,9 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser }) {
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm overflow-hidden">
           <div className="flex border-b dark:border-gray-700">
             {[
-              { key: 'history', label: '📋 Lịch sử' },
-              { key: 'chart', label: '📊 Biểu đồ' },
-              { key: 'leaderboard', label: '🏆 Xếp hạng' },
+              { key: 'history', label: 'Lịch sử' },
+              { key: 'chart', label: 'Biểu đồ' },
+              { key: 'leaderboard', label: 'Xếp hạng' },
             ].map(({ key, label }) => (
               <button
                 key={key}
@@ -314,7 +312,7 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser }) {
                       key={i}
                       className={`flex items-center gap-3 px-5 py-3.5 ${item.mssv === user?.mssv ? 'bg-blue-50 dark:bg-blue-900/20' : 'hover:bg-gray-50 dark:hover:bg-gray-700'}`}
                     >
-                      <span className="text-xl w-8 text-center">{MEDALS[i] || `${i + 1}`}</span>
+                      <span className="text-sm font-bold w-8 text-center text-gray-500">{i + 1}</span>
                       <div className="flex-1 min-w-0">
                         <p className={`font-medium text-sm truncate ${item.mssv === user?.mssv ? 'text-blue-700 dark:text-blue-400' : 'text-gray-800 dark:text-white'}`}>
                           {item.name} {item.mssv === user?.mssv && <span className="text-xs text-blue-400">(Bạn)</span>}

@@ -22,7 +22,7 @@ export default function AdminDashboard({ user, onLogout }) {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <nav className="bg-gray-900 text-white px-4 py-3 flex items-center justify-between shadow-md">
         <div className="flex items-center gap-2 font-semibold">
-          <span className="text-xl">🏛️</span> Admin Dashboard
+          Admin Dashboard
         </div>
         <div className="flex items-center gap-3">
           <button onClick={load} className="text-gray-400 hover:text-white p-1.5">
@@ -36,7 +36,7 @@ export default function AdminDashboard({ user, onLogout }) {
 
       <div className="max-w-5xl mx-auto px-4 py-6 space-y-5">
         <div className="bg-gradient-to-r from-gray-800 to-gray-900 rounded-2xl p-6 text-white shadow-md">
-          <h2 className="text-2xl font-bold mb-1">Thống kê toàn trường 🏫</h2>
+          <h2 className="text-2xl font-bold mb-1">Thống kê toàn trường</h2>
           <p className="text-gray-300 text-sm">Trường Cao Đẳng Kinh Tế Đối Ngoại · Admin: {user?.name}</p>
         </div>
 
@@ -49,13 +49,12 @@ export default function AdminDashboard({ user, onLogout }) {
             {/* Tổng quan */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               {[
-                { label: 'Sinh viên', value: data.stats.totalStudents, icon: '🎓', color: 'blue' },
-                { label: 'Giảng viên', value: data.stats.totalTeachers, icon: '👩‍🏫', color: 'green' },
-                { label: 'Lớp học', value: data.stats.totalClasses, icon: '📚', color: 'purple' },
-                { label: 'Lượt điểm danh', value: data.stats.totalAttendance, icon: '📋', color: 'orange' },
-              ].map(({ label, value, icon, color }) => (
+                { label: 'Sinh viên', value: data.stats.totalStudents },
+                { label: 'Giảng viên', value: data.stats.totalTeachers },
+                { label: 'Lớp học', value: data.stats.totalClasses },
+                { label: 'Lượt điểm danh', value: data.stats.totalAttendance },
+              ].map(({ label, value }) => (
                 <div key={label} className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm text-center">
-                  <p className="text-3xl mb-2">{icon}</p>
                   <p className="text-2xl font-bold text-gray-800 dark:text-white">{value}</p>
                   <p className="text-gray-500 dark:text-gray-400 text-sm">{label}</p>
                 </div>
@@ -66,8 +65,8 @@ export default function AdminDashboard({ user, onLogout }) {
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm overflow-hidden">
               <div className="flex border-b dark:border-gray-700">
                 {[
-                  { key: 'overview', label: '📊 Theo lớp' },
-                  { key: 'daily', label: '📅 7 ngày qua' },
+                  { key: 'overview', label: 'Theo lớp' },
+                  { key: 'daily', label: '7 ngày qua' },
                 ].map(({ key, label }) => (
                   <button
                     key={key}

@@ -66,9 +66,9 @@ export default function LeaveModal({ user, onClose }) {
   };
 
   const statusBadge = (s) => ({
-    pending: <span className="bg-yellow-100 text-yellow-700 text-xs px-2 py-0.5 rounded-full">⏳ Chờ duyệt</span>,
-    approved: <span className="bg-green-100 text-green-700 text-xs px-2 py-0.5 rounded-full">✅ Đã duyệt</span>,
-    rejected: <span className="bg-red-100 text-red-700 text-xs px-2 py-0.5 rounded-full">❌ Từ chối</span>,
+    pending: <span className="bg-yellow-100 text-yellow-700 text-xs px-2 py-0.5 rounded-full">Chờ duyệt</span>,
+    approved: <span className="bg-green-100 text-green-700 text-xs px-2 py-0.5 rounded-full">Đã duyệt</span>,
+    rejected: <span className="bg-red-100 text-red-700 text-xs px-2 py-0.5 rounded-full">Từ chối</span>,
   }[s] || null);
 
   return (
@@ -77,7 +77,7 @@ export default function LeaveModal({ user, onClose }) {
         {/* Header */}
         <div className="bg-gradient-to-r from-indigo-500 to-indigo-600 px-5 py-4 flex items-center justify-between text-white shrink-0">
           <div>
-            <h3 className="font-bold text-lg">🏥 Xin nghỉ phép</h3>
+            <h3 className="font-bold text-lg">Xin nghỉ phép</h3>
             <p className="text-indigo-100 text-xs mt-0.5">Nộp giấy tờ & chờ giảng viên duyệt</p>
           </div>
           <button onClick={onClose} className="text-white/70 hover:text-white"><X size={22} /></button>
@@ -85,7 +85,7 @@ export default function LeaveModal({ user, onClose }) {
 
         {/* Tabs */}
         <div className="flex border-b dark:border-gray-700 shrink-0">
-          {[{ key: 'form', label: '📝 Gửi đơn' }, { key: 'history', label: '📋 Lịch sử' }].map(({ key, label }) => (
+          {[{ key: 'form', label: 'Gửi đơn' }, { key: 'history', label: 'Lịch sử' }].map(({ key, label }) => (
             <button
               key={key}
               onClick={key === 'history' ? loadHistory : () => setTab('form')}
@@ -184,7 +184,7 @@ export default function LeaveModal({ user, onClose }) {
 
                   {/* Hạn mức nghỉ */}
                   <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded-xl p-3 text-xs text-indigo-700 dark:text-indigo-400">
-                    ⚠️ Theo quy định, sinh viên không được nghỉ quá <strong>20% số tiết</strong> mỗi môn. Nghỉ có phép được xét riêng.
+                    Theo quy định, sinh viên không được nghỉ quá <strong>20% số tiết</strong> mỗi môn. Nghỉ có phép được xét riêng.
                   </div>
 
                   <button
@@ -192,7 +192,7 @@ export default function LeaveModal({ user, onClose }) {
                     disabled={loading || !form.classId || !form.date}
                     className="w-full bg-indigo-500 hover:bg-indigo-600 disabled:bg-indigo-300 text-white font-medium py-3 rounded-xl text-sm transition-colors"
                   >
-                    {loading ? 'Đang gửi...' : '📤 Gửi đơn xin nghỉ'}
+                    {loading ? 'Đang gửi...' : 'Gửi đơn xin nghỉ'}
                   </button>
                 </form>
               )}
@@ -217,7 +217,7 @@ export default function LeaveModal({ user, onClose }) {
                     {statusBadge(leave.status)}
                   </div>
                   {leave.reason && <p className="text-xs text-gray-500 dark:text-gray-400">{leave.reason}</p>}
-                  {leave.note && <p className="text-xs text-blue-600 dark:text-blue-400">💬 GV: {leave.note}</p>}
+                  {leave.note && <p className="text-xs text-blue-600 dark:text-blue-400">GV: {leave.note}</p>}
                   {leave.imageBase64 && (
                     <img src={leave.imageBase64} alt="giấy tờ" className="w-full max-h-32 object-cover rounded-lg" />
                   )}

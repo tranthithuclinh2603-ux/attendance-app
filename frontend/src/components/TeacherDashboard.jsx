@@ -45,7 +45,7 @@ function ManualModal({ classId, date, onClose, onDone }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-sm p-6">
-        <h3 className="font-semibold text-gray-800 dark:text-white mb-4">➕ Thêm điểm danh thủ công</h3>
+        <h3 className="font-semibold text-gray-800 dark:text-white mb-4">Thêm điểm danh thủ công</h3>
         <p className="text-xs text-gray-400 mb-4">Lớp: {classId} · Ngày: {date}</p>
 
         {fetchingStudents ? (
@@ -71,9 +71,9 @@ function ManualModal({ classId, date, onClose, onDone }) {
                 onChange={(e) => setStatus(e.target.value)}
                 className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="present">✅ Có mặt</option>
-                <option value="late">⏰ Muộn</option>
-                <option value="absent">❌ Vắng</option>
+                <option value="present">Có mặt</option>
+                <option value="late">Muộn</option>
+                <option value="absent">Vắng</option>
               </select>
             </div>
           </div>
@@ -111,7 +111,6 @@ function AlertsPanel({ classId }) {
   if (loading) return <div className="py-8 text-center text-gray-400 text-sm">Đang kiểm tra...</div>;
   if (!alerts.length) return (
     <div className="py-8 text-center">
-      <span className="text-3xl">✅</span>
       <p className="text-gray-500 text-sm mt-2">Không có sinh viên nào cần cảnh báo</p>
     </div>
   );
@@ -269,7 +268,7 @@ export default function TeacherDashboard({ user, onLogout, onUpdateUser }) {
       <div className="max-w-5xl mx-auto px-4 py-6 space-y-5">
         {/* Header */}
         <div className="bg-gradient-to-r from-blue-500 to-blue-700 rounded-2xl p-6 text-white shadow-md">
-          <h2 className="text-2xl font-bold mb-1">Xin chào, {user?.name}! 👋</h2>
+          <h2 className="text-2xl font-bold mb-1">Xin chào, {user?.name}!</h2>
           <p className="text-blue-100 text-sm">Quản lý điểm danh - Giảng viên · Trường Cao Đẳng Kinh Tế Đối Ngoại</p>
         </div>
 
@@ -350,11 +349,11 @@ export default function TeacherDashboard({ user, onLogout, onUpdateUser }) {
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm overflow-hidden">
           <div className="flex border-b dark:border-gray-700">
             {[
-              { key: 'list', label: '📋 Danh sách' },
-              { key: 'alerts', label: '⚠️ Cảnh báo' },
-              { key: 'stats', label: '📊 Thống kê' },
-              { key: 'bulk', label: '📤 Bulk Upload' },
-              { key: 'leave', label: '🏥 Nghỉ phép' },
+              { key: 'list', label: 'Danh sách' },
+              { key: 'alerts', label: 'Cảnh báo' },
+              { key: 'stats', label: 'Thống kê' },
+              { key: 'bulk', label: 'Bulk Upload' },
+              { key: 'leave', label: 'Nghỉ phép' },
             ].map(({ key, label }) => (
               <button
                 key={key}
@@ -407,7 +406,7 @@ export default function TeacherDashboard({ user, onLogout, onUpdateUser }) {
           {activeTab === 'alerts' && (
             <>
               <div className="px-5 py-3 border-b dark:border-gray-700 bg-yellow-50 dark:bg-yellow-900/20">
-                <p className="text-xs text-yellow-700 dark:text-yellow-400 font-medium">⚠️ Sinh viên vắng 2+ buổi liên tiếp trong 14 ngày gần nhất</p>
+                <p className="text-xs text-yellow-700 dark:text-yellow-400 font-medium">Sinh viên vắng 2+ buổi liên tiếp trong 14 ngày gần nhất</p>
               </div>
               <AlertsPanel classId={selectedClass} />
             </>
@@ -422,7 +421,7 @@ export default function TeacherDashboard({ user, onLogout, onUpdateUser }) {
 
               {/* Template download */}
               <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 text-sm">
-                <p className="font-medium text-blue-700 dark:text-blue-400 mb-2">📋 File Excel cần có các cột:</p>
+                <p className="font-medium text-blue-700 dark:text-blue-400 mb-2">File Excel cần có các cột:</p>
                 <div className="flex flex-wrap gap-2">
                   {['Họ tên', 'Email', 'MSSV', 'Lớp', 'Mật khẩu'].map((c) => (
                     <span key={c} className="bg-blue-100 dark:bg-blue-800 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded text-xs font-mono">{c}</span>
@@ -485,7 +484,7 @@ export default function TeacherDashboard({ user, onLogout, onUpdateUser }) {
                 <div className="space-y-3">
                   <div className={`rounded-xl p-4 ${bulkResult.success ? 'bg-green-50 dark:bg-green-900/20' : 'bg-red-50 dark:bg-red-900/20'}`}>
                     <p className={`font-semibold text-sm ${bulkResult.success ? 'text-green-700 dark:text-green-400' : 'text-red-600'}`}>
-                      {bulkResult.success ? '✅' : '❌'} {bulkResult.message}
+                      {bulkResult.message}
                     </p>
                   </div>
                   {bulkResult.results && (
@@ -509,7 +508,7 @@ export default function TeacherDashboard({ user, onLogout, onUpdateUser }) {
                                   r.status === 'skip' ? 'bg-yellow-100 text-yellow-700' :
                                   'bg-red-100 text-red-700'
                                 }`}>
-                                  {r.status === 'success' ? '✅ Thành công' : r.status === 'skip' ? '⚠️ Đã tồn tại' : `❌ ${r.message}`}
+                                  {r.status === 'success' ? 'Thành công' : r.status === 'skip' ? 'Đã tồn tại' : r.message}
                                 </span>
                               </td>
                             </tr>

@@ -66,7 +66,7 @@ export default function QRModal({ classId, date, onClose }) {
         {/* Header */}
         <div className="bg-gradient-to-r from-blue-500 to-blue-700 px-5 py-4 flex items-center justify-between text-white">
           <div>
-            <h3 className="font-bold text-lg">📱 QR Điểm Danh</h3>
+            <h3 className="font-bold text-lg">QR Điểm Danh</h3>
             <p className="text-blue-100 text-xs mt-0.5">Lớp {classId} · {date}</p>
           </div>
           <button onClick={onClose} className="text-white/70 hover:text-white"><X size={22} /></button>
@@ -100,7 +100,7 @@ export default function QRModal({ classId, date, onClose }) {
 
           {/* Instructions */}
           <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-3 w-full text-sm text-gray-600 dark:text-gray-300">
-            <p className="font-medium text-blue-700 dark:text-blue-400 mb-1">📋 Hướng dẫn:</p>
+            <p className="font-medium text-blue-700 dark:text-blue-400 mb-1">Hướng dẫn:</p>
             <ol className="list-decimal list-inside space-y-1 text-xs">
               <li>Chiếu QR code này lên màn hình/máy chiếu</li>
               <li>Sinh viên mở camera điện thoại quét mã</li>

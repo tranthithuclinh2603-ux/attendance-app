@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { GraduationCap, Eye, EyeOff, AlertCircle, CheckCircle, Upload, Camera, RotateCcw, ChevronRight } from 'lucide-react';
+import { GraduationCap, Eye, EyeOff, AlertCircle, CheckCircle, Upload, Camera, ChevronRight, Zap, BookOpen } from 'lucide-react';
 import { authAPI, biometricAPI } from '../services/api';
 import { resizeImage } from '../utils/faceUtils';
 
@@ -350,7 +350,7 @@ export default function RegisterPage() {
                 {errors.classId && <p className="text-red-500 text-xs -mt-2">{errors.classId}</p>}
                 {selLop && (
                   <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2.5 text-sm text-blue-700 flex items-center gap-2">
-                    <span>🎓</span> <span>Lớp: <strong>{selLop}</strong></span>
+                    <BookOpen size={14}/> <span>Lớp: <strong>{selLop}</strong></span>
                   </div>
                 )}
               </>
@@ -369,7 +369,7 @@ export default function RegisterPage() {
                   }}
                   className="text-xs text-blue-500 hover:text-blue-700 font-medium"
                 >
-                  ⚡ Tạo mật khẩu mạnh
+                  <Zap size={12} className="inline mr-0.5"/> Tạo mật khẩu mạnh
                 </button>
               </div>
               <div className="relative">
@@ -399,7 +399,7 @@ export default function RegisterPage() {
                 <button type="button" onClick={() => setShowConfirmPw(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">{showConfirmPw ? <EyeOff size={16}/> : <Eye size={16}/>}</button>
               </div>
               {form.confirmPassword && form.password === form.confirmPassword && (
-                <p className="text-green-500 text-xs mt-1">✓ Mật khẩu khớp</p>
+                <p className="text-green-500 text-xs mt-1 flex items-center gap-1"><CheckCircle size={12}/> Mật khẩu khớp</p>
               )}
               {errors.confirmPassword && <p className="text-red-500 text-xs mt-1">{errors.confirmPassword}</p>}
             </div>
@@ -414,7 +414,7 @@ export default function RegisterPage() {
         {step === 2 && (
           <div className="space-y-5">
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-700">
-              <p className="font-semibold mb-1">📋 Tải lên ảnh thẻ sinh viên</p>
+              <p className="font-semibold mb-1 flex items-center gap-1.5"><Upload size={14}/> Tải lên ảnh thẻ sinh viên</p>
               <p className="text-blue-600 text-xs">Hệ thống sẽ xác thực thông tin cá nhân qua ảnh thẻ sinh viên của bạn.</p>
             </div>
 
@@ -423,7 +423,7 @@ export default function RegisterPage() {
               {studentIdImage ? (
                 <div className="p-3">
                   <img src={studentIdImage} alt="Thẻ SV" className="w-full rounded-lg object-contain max-h-48" />
-                  <p className="text-center text-green-600 text-sm font-medium mt-2">✅ Đã tải lên thành công</p>
+                  <p className="text-center text-green-600 text-sm font-medium mt-2 flex items-center justify-center gap-1"><CheckCircle size={14}/> Đã tải lên thành công</p>
                 </div>
               ) : (
                 <div className="flex flex-col items-center gap-3 py-10">
@@ -450,7 +450,7 @@ export default function RegisterPage() {
         {step === 3 && (
           <div className="space-y-4">
             <div className="bg-violet-50 border border-violet-200 rounded-xl p-4 text-sm text-violet-700">
-              <p className="font-semibold mb-1">📸 Đăng ký nhận diện khuôn mặt</p>
+              <p className="font-semibold mb-1 flex items-center gap-1.5"><Camera size={14}/> Đăng ký nhận diện khuôn mặt</p>
               <p className="text-violet-600 text-xs">Chụp <strong>{FACE_ANGLES.length} góc</strong> để hệ thống nhận diện chính xác khi điểm danh.</p>
             </div>
 
@@ -519,7 +519,7 @@ export default function RegisterPage() {
 
             {faceStep === 'done' && (
               <div className="bg-green-50 border border-green-200 rounded-xl p-5 text-center">
-                <p className="text-4xl mb-2">✅</p>
+                <div className="flex justify-center mb-2"><CheckCircle size={36} className="text-green-500"/></div>
                 <p className="text-green-700 font-semibold">Đã chụp đủ {FACE_ANGLES.length} góc khuôn mặt!</p>
                 <p className="text-green-600 text-sm mt-1">Dữ liệu sinh trắc học sẵn sàng được lưu.</p>
               </div>
@@ -535,7 +535,7 @@ export default function RegisterPage() {
                 disabled={faceStep !== 'done' || loading}
                 className="flex-1 bg-violet-600 hover:bg-violet-700 disabled:bg-gray-300 text-white py-2.5 rounded-lg text-sm font-medium flex items-center justify-center gap-2"
               >
-                {loading ? <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"/> Đang lưu...</> : '🎉 Hoàn tất đăng ký'}
+                {loading ? <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"/> Đang lưu...</> : 'Hoàn tất đăng ký'}
               </button>
             </div>
           </div>
@@ -544,7 +544,7 @@ export default function RegisterPage() {
         {/* ── STEP 4: Hoàn tất ──────────────────────────── */}
         {step === 4 && (
           <div className="text-center py-4 space-y-4">
-            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto text-4xl">🎉</div>
+            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto"><CheckCircle size={40} className="text-green-500"/></div>
             <h2 className="text-xl font-bold text-gray-800">Đăng ký thành công!</h2>
             {role === 'student' && (
               <p className="text-gray-500 text-sm">Tài khoản, ảnh thẻ sinh viên và dữ liệu khuôn mặt đã được lưu. Bạn có thể điểm danh bằng nhận diện khuôn mặt.</p>
