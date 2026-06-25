@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { PlayCircle, StopCircle, RefreshCw, Download, ChevronDown, ChevronUp, Calendar, Clock, Users, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
+import { PlayCircle, StopCircle, RefreshCw, Download, ChevronDown, ChevronUp, Calendar, Clock, MapPin, CheckCircle, XCircle } from 'lucide-react';
 import { sessionAPI, timetableAPI } from '../services/api';
+
+const SCHOOL = { lat: 10.813308852984058, lng: 106.77209163591941 };
 
 const PERIODS = [
   { period: 1, label: 'Ca 1', startTime: '07:00', endTime: '09:30' },
@@ -75,6 +77,69 @@ function OpenSessionForm({ classId, onOpened }) {
   );
 }
 
+// ── Bản đồ vị trí realtime ────────────────────────────
+function LocationMap({ sessionId }) {
+  const [locations, setLocations] = useState({});
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    try {
+      const res = await sessionAPI.getLocations(sessionId);
+      setLocations(res.data.locations || {});
+    } catch { }
+    setLoading(false);
+  }, [sessionId]);
+
+  useEffect(() => {
+    load();
+    const interval = setInterval(load, 30000); // refresh mỗi 30s
+    return () => clearInterval(interval);
+  }, [load]);
+
+  const list = Object.entries(locations).map(([uid, loc]) => ({ uid, ...loc }));
+  const inZone = list.filter(l => l.inZone).length;
+  const outZone = list.filter(l => !l.inZone).length;
+
+  const openGoogleMaps = (lat, lng, name) => {
+    window.open(`https://www.google.com/maps?q=${lat},${lng}&z=17`, '_blank');
+  };
+
+  if (loading) return <div className="py-6 text-center text-gray-400 text-sm">Đang tải vị trí...</div>;
+  if (!list.length) return (
+    <div className="py-6 text-center text-gray-400 text-sm">
+      <MapPin size={28} className="mx-auto mb-1.5 opacity-30" />
+      Chưa có vị trí nào được gửi
+    </div>
+  );
+
+  return (
+    <div className="p-3 space-y-3">
+      <div className="flex gap-3 text-xs">
+        <span className="flex items-center gap-1.5 text-green-600"><span className="w-2.5 h-2.5 rounded-full bg-green-500 inline-block"/> Trong trường: {inZone}</span>
+        <span className="flex items-center gap-1.5 text-red-500"><span className="w-2.5 h-2.5 rounded-full bg-red-400 inline-block"/> Ngoài trường: {outZone}</span>
+        <button onClick={load} className="ml-auto text-gray-400 hover:text-gray-600"><RefreshCw size={12} /></button>
+      </div>
+      <div className="divide-y divide-gray-100 dark:divide-gray-700 max-h-60 overflow-y-auto rounded-xl border border-gray-200 dark:border-gray-700">
+        {list.map(loc => (
+          <div key={loc.uid} className="flex items-center gap-3 px-3 py-2.5">
+            <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${loc.inZone ? 'bg-green-500' : 'bg-red-400'}`} />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-gray-800 dark:text-white truncate">{loc.name}</p>
+              <p className="text-xs text-gray-400">{loc.inZone ? `Trong trường` : `Ngoài trường`} · cách {loc.distance}m · {loc.updatedAt ? new Date(new Date(loc.updatedAt).getTime() + 7*3600000).toISOString().slice(11,16) : ''}</p>
+            </div>
+            <button
+              onClick={() => openGoogleMaps(loc.lat, loc.lng, loc.name)}
+              className="shrink-0 text-xs text-blue-500 hover:text-blue-700 flex items-center gap-1"
+            >
+              <MapPin size={12} /> Xem
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ── Danh sách điểm danh của một phiên ─────────────────
 function SessionAttendanceList({ session }) {
   const [data, setData] = useState([]);
@@ -134,6 +199,7 @@ function SessionAttendanceList({ session }) {
 // ── Thẻ phiên hôm nay ──────────────────────────────────
 function SessionCard({ session, onClose, onRefresh }) {
   const [expanded, setExpanded] = useState(false);
+  const [cardTab, setCardTab] = useState('attendance'); // 'attendance' | 'location'
   const [closing, setClosing] = useState(false);
 
   const handleClose = async () => {
@@ -179,7 +245,20 @@ function SessionCard({ session, onClose, onRefresh }) {
           </button>
         </div>
       </div>
-      {expanded && <SessionAttendanceList session={session} />}
+      {expanded && (
+        <div>
+          <div className="flex border-b border-gray-100 dark:border-gray-700">
+            {[{ key: 'attendance', label: 'Điểm danh' }, { key: 'location', label: 'Vị trí' }].map(t => (
+              <button key={t.key} onClick={() => setCardTab(t.key)}
+                className={`flex-1 py-2 text-xs font-medium transition-colors ${cardTab === t.key ? 'text-blue-600 border-b-2 border-blue-500' : 'text-gray-400 hover:text-gray-600'}`}>
+                {t.label}
+              </button>
+            ))}
+          </div>
+          {cardTab === 'attendance' && <SessionAttendanceList session={session} />}
+          {cardTab === 'location' && <LocationMap sessionId={session.sessionId} />}
+        </div>
+      )}
     </div>
   );
 }

@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Camera, Calendar, Clock, BookOpen, CheckCircle, XCircle, Trophy, BarChart2, RefreshCw, PlayCircle } from 'lucide-react';
-import { attendanceAPI, sessionAPI } from '../services/api';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Camera, Calendar, Clock, BookOpen, CheckCircle, XCircle, Trophy, BarChart2, RefreshCw, Bell, MapPin } from 'lucide-react';
+import { attendanceAPI, sessionAPI, timetableAPI } from '../services/api';
 import AttendanceModal from './AttendanceModal';
 import LeaveModal from './LeaveModal';
 import NavBar from './NavBar';
@@ -102,18 +102,81 @@ function WeekChart({ history }) {
   );
 }
 
+const DAY_NAMES = ['', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'CN'];
+const PERIOD_TIMES = ['', '07:00–09:30', '09:45–12:15', '12:45–15:15', '15:30–18:00'];
+
+function TimetableTab({ classId }) {
+  const [timetable, setTimetable] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!classId) return;
+    timetableAPI.get(classId)
+      .then(res => setTimetable(res.data.timetable || []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [classId]);
+
+  // Lấy thứ hôm nay (1=T2…7=CN)
+  const todayDow = new Date().getDay() === 0 ? 7 : new Date().getDay();
+
+  if (loading) return <div className="py-10 text-center text-gray-400 text-sm">Đang tải lịch học...</div>;
+  if (!timetable.length) return (
+    <div className="py-10 text-center text-gray-400 text-sm">
+      <Calendar size={32} className="mx-auto mb-2 opacity-30" />
+      Giảng viên chưa nhập thời khóa biểu
+    </div>
+  );
+
+  // Group by dayOfWeek
+  const byDay = {};
+  timetable.forEach(e => {
+    if (!byDay[e.dayOfWeek]) byDay[e.dayOfWeek] = [];
+    byDay[e.dayOfWeek].push(e);
+  });
+  const days = Object.keys(byDay).map(Number).sort((a, b) => a - b);
+
+  return (
+    <div className="p-4 space-y-3">
+      {days.map(day => (
+        <div key={day} className={`rounded-xl border overflow-hidden ${day === todayDow ? 'border-blue-400 dark:border-blue-600' : 'border-gray-200 dark:border-gray-700'}`}>
+          <div className={`px-3 py-2 flex items-center gap-2 ${day === todayDow ? 'bg-blue-500 text-white' : 'bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-300'}`}>
+            <span className="text-sm font-semibold">{DAY_NAMES[day]}</span>
+            {day === todayDow && <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full">Hôm nay</span>}
+          </div>
+          <div className="divide-y divide-gray-100 dark:divide-gray-700">
+            {byDay[day].sort((a,b) => a.period - b.period).map((e, i) => (
+              <div key={i} className="flex items-center gap-3 px-3 py-2.5">
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 ${day === todayDow ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'}`}>
+                  C{e.period}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-800 dark:text-white truncate">{e.subject}</p>
+                  <p className="text-xs text-gray-400">{PERIOD_TIMES[e.period]}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function StudentDashboard({ user, onLogout, onUpdateUser }) {
   const [showModal, setShowModal] = useState(false);
   const [showLeave, setShowLeave] = useState(false);
   const [activeSessions, setActiveSessions] = useState([]);
   const [sessionsLoading, setSessionsLoading] = useState(false);
-  const [selectedSession, setSelectedSession] = useState(null); // session để điểm danh
+  const [selectedSession, setSelectedSession] = useState(null);
+  const [newSessionBanner, setNewSessionBanner] = useState(null); // banner khi có phiên mới
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [leaderboard, setLeaderboard] = useState([]);
   const [lbPeriod, setLbPeriod] = useState('');
   const [toast, setToast] = useState(null);
   const [activeTab, setActiveTab] = useState('history');
+  const prevSessionIds = useRef(new Set()); // track phiên đã biết để phát hiện phiên mới
 
   const showToast = (message, type = 'success') => setToast({ message, type });
 
@@ -139,24 +202,70 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser }) {
     }
   }, [user?.classId]);
 
-  const fetchActiveSessions = useCallback(async () => {
+  const fetchActiveSessions = useCallback(async (silent = false) => {
     if (!user?.classId) return;
-    setSessionsLoading(true);
+    if (!silent) setSessionsLoading(true);
     try {
       const res = await sessionAPI.getActive(user.classId);
-      setActiveSessions(res.data.sessions || []);
+      const sessions = res.data.sessions || [];
+
+      // Phát hiện phiên mới — so sánh với lần fetch trước
+      const currentIds = new Set(sessions.map(s => s.sessionId));
+      const newSessions = sessions.filter(s => !prevSessionIds.current.has(s.sessionId));
+      if (newSessions.length > 0 && prevSessionIds.current.size > 0) {
+        // Chỉ hiện banner nếu không phải lần load đầu tiên
+        setNewSessionBanner(newSessions[0]);
+        setTimeout(() => setNewSessionBanner(null), 8000);
+      }
+      prevSessionIds.current = currentIds;
+      setActiveSessions(sessions);
     } catch { setActiveSessions([]); }
-    setSessionsLoading(false);
+    if (!silent) setSessionsLoading(false);
   }, [user?.classId]);
 
+  // Polling phiên mỗi 60 giây
   useEffect(() => {
     fetchHistory();
     fetchLeaderboard();
     fetchActiveSessions();
+    const interval = setInterval(() => fetchActiveSessions(true), 60000);
+    return () => clearInterval(interval);
   }, [fetchHistory, fetchLeaderboard, fetchActiveSessions]);
+
+  // GPS tracking định kỳ: khi đang trong phiên (đã điểm danh) → gửi vị trí mỗi 10 phút
+  const trackingSessionRef = useRef(null);
+  const startLocationTracking = useCallback((session) => {
+    if (trackingSessionRef.current) clearInterval(trackingSessionRef.current);
+    const sendLocation = () => {
+      if (!navigator.geolocation) return;
+      navigator.geolocation.getCurrentPosition(pos => {
+        sessionAPI.updateLocation(session.sessionId, {
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+          accuracy: pos.coords.accuracy,
+        }).catch(() => {});
+      }, () => {}, { timeout: 10000, maximumAge: 30000 });
+    };
+    sendLocation(); // gửi ngay
+    trackingSessionRef.current = setInterval(sendLocation, 10 * 60 * 1000); // mỗi 10 phút
+  }, []);
+
+  const stopLocationTracking = useCallback(() => {
+    if (trackingSessionRef.current) {
+      clearInterval(trackingSessionRef.current);
+      trackingSessionRef.current = null;
+    }
+  }, []);
+
+  // Dừng tracking khi unmount
+  useEffect(() => () => stopLocationTracking(), [stopLocationTracking]);
 
   const handleSuccess = (status) => {
     setShowModal(false);
+    // Bắt đầu tracking GPS nếu điểm danh thành công trong phiên
+    if (selectedSession && (status === 'present' || status === 'late')) {
+      startLocationTracking(selectedSession);
+    }
     setSelectedSession(null);
     if (status === 'late') {
       showToast('Điểm danh muộn! Vui lòng đến đúng giờ hơn.', 'warning');
@@ -181,6 +290,28 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser }) {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <NavBar user={user} onLogout={onLogout} onUpdateUser={onUpdateUser} />
+
+      {/* Banner phiên mới mở */}
+      {newSessionBanner && (
+        <div className="fixed top-16 left-0 right-0 z-40 flex justify-center px-4 pointer-events-none">
+          <div className="bg-blue-600 text-white px-5 py-3 rounded-2xl shadow-xl flex items-center gap-3 pointer-events-auto max-w-sm w-full animate-bounce-in">
+            <Bell size={18} className="shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-sm">Phiên điểm danh đã mở!</p>
+              <p className="text-blue-100 text-xs truncate">{newSessionBanner.subject} · Ca {newSessionBanner.period} ({newSessionBanner.startTime})</p>
+            </div>
+            <button
+              onClick={() => { setSelectedSession(newSessionBanner); setShowModal(true); setNewSessionBanner(null); }}
+              className="shrink-0 bg-white text-blue-600 px-3 py-1.5 rounded-xl text-xs font-bold hover:bg-blue-50"
+            >
+              Điểm danh
+            </button>
+            <button onClick={() => setNewSessionBanner(null)} className="text-white/60 hover:text-white">
+              <XCircle size={16} />
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="max-w-2xl mx-auto px-4 py-6 space-y-5">
         {/* Greeting card */}
@@ -279,6 +410,7 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser }) {
           <div className="flex border-b dark:border-gray-700">
             {[
               { key: 'history', label: 'Lịch sử' },
+              { key: 'timetable', label: 'Lịch học' },
               { key: 'chart', label: 'Biểu đồ' },
               { key: 'leaderboard', label: 'Xếp hạng' },
             ].map(({ key, label }) => (
@@ -340,6 +472,9 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser }) {
               )}
             </div>
           )}
+
+          {/* Timetable tab */}
+          {activeTab === 'timetable' && <TimetableTab classId={user?.classId} />}
 
           {/* Chart tab */}
           {activeTab === 'chart' && <WeekChart history={history} />}

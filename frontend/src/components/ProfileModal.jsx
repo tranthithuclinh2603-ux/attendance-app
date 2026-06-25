@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { X, Mail, BookOpen, GraduationCap, Edit2, Check, Camera, Fingerprint } from 'lucide-react';
+import { X, Mail, BookOpen, GraduationCap, Edit2, Check, Camera, Fingerprint, Lock, Eye, EyeOff } from 'lucide-react';
 import { authAPI, biometricAPI } from '../services/api';
 
 const CLASSES = ['CĐTMDT28A','CĐTMDT28B','CĐTMDT28C','CĐTMDT28D','CĐTMDT28E','CĐTMDT28F','CĐTMDT28G','CĐTMDT28H','CĐTMDT28I'];
@@ -37,12 +37,17 @@ export default function ProfileModal({ user, onClose, onUpdateName, onUpdateAvat
   const [selectedClass, setSelectedClass] = useState(user?.classId || '');
   const [saving, setSaving] = useState(false);
   const [savingClass, setSavingClass] = useState(false);
-  const [bioStatus, setBioStatus] = useState(''); // '' | 'loading' | 'ok' | 'err'
+  const [bioStatus, setBioStatus] = useState('');
   const [bioMsg, setBioMsg] = useState('');
   const [avatarLoading, setAvatarLoading] = useState(false);
   const [msg, setMsg] = useState('');
   const [localAvatar, setLocalAvatar] = useState(user?.avatar || null);
   const fileRef = useRef();
+  // Đổi mật khẩu
+  const [showPwSection, setShowPwSection] = useState(false);
+  const [pwForm, setPwForm] = useState({ current: '', newPw: '', confirm: '' });
+  const [pwSaving, setPwSaving] = useState(false);
+  const [showPw, setShowPw] = useState({ current: false, newPw: false, confirm: false });
 
   const showMsg = (text, ok = true) => {
     setMsg({ text, ok });
@@ -86,6 +91,23 @@ export default function ProfileModal({ user, onClose, onUpdateName, onUpdateAvat
     } catch (err) {
       setBioStatus('err');
       setBioMsg(err.name === 'NotAllowedError' ? 'Xác thực bị từ chối.' : err.response?.data?.message || 'Lỗi đăng ký sinh trắc học.');
+    }
+  };
+
+  const changePassword = async () => {
+    if (!pwForm.current || !pwForm.newPw || !pwForm.confirm) { showMsg('Vui lòng điền đầy đủ', false); return; }
+    if (pwForm.newPw !== pwForm.confirm) { showMsg('Mật khẩu mới không khớp', false); return; }
+    if (pwForm.newPw.length < 6) { showMsg('Mật khẩu tối thiểu 6 ký tự', false); return; }
+    setPwSaving(true);
+    try {
+      await authAPI.changePassword({ currentPassword: pwForm.current, newPassword: pwForm.newPw });
+      showMsg('Đổi mật khẩu thành công!');
+      setPwForm({ current: '', newPw: '', confirm: '' });
+      setShowPwSection(false);
+    } catch (err) {
+      showMsg(err.response?.data?.message || 'Đổi mật khẩu thất bại', false);
+    } finally {
+      setPwSaving(false);
     }
   };
 
@@ -262,6 +284,52 @@ export default function ProfileModal({ user, onClose, onUpdateName, onUpdateAvat
               </div>
             </>
           )}
+
+          {/* Đổi mật khẩu */}
+          <div className="border-t dark:border-gray-700 pt-3 mt-1">
+            <button
+              onClick={() => setShowPwSection(p => !p)}
+              className="w-full flex items-center gap-2 text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 py-2 text-sm font-medium transition-colors"
+            >
+              <Lock size={15} className="text-blue-500" />
+              Đổi mật khẩu
+              <span className="ml-auto text-gray-400 text-xs">{showPwSection ? '▲' : '▼'}</span>
+            </button>
+            {showPwSection && (
+              <div className="space-y-2.5 mt-2">
+                {[
+                  { key: 'current', label: 'Mật khẩu hiện tại' },
+                  { key: 'newPw', label: 'Mật khẩu mới' },
+                  { key: 'confirm', label: 'Xác nhận mật khẩu mới' },
+                ].map(({ key, label }) => (
+                  <div key={key} className="relative">
+                    <input
+                      type={showPw[key] ? 'text' : 'password'}
+                      placeholder={label}
+                      value={pwForm[key]}
+                      onChange={e => setPwForm(f => ({ ...f, [key]: e.target.value }))}
+                      onKeyDown={e => e.key === 'Enter' && changePassword()}
+                      className="w-full border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-3 py-2 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPw(p => ({ ...p, [key]: !p[key] }))}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      {showPw[key] ? <EyeOff size={14} /> : <Eye size={14} />}
+                    </button>
+                  </div>
+                ))}
+                <button
+                  onClick={changePassword}
+                  disabled={pwSaving}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg text-sm font-semibold disabled:opacity-60"
+                >
+                  {pwSaving ? 'Đang lưu...' : 'Xác nhận đổi mật khẩu'}
+                </button>
+              </div>
+            )}
+          </div>
 
           {/* WebAuthn */}
           {window.PublicKeyCredential && (

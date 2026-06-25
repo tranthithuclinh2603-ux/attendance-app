@@ -34,6 +34,7 @@ export const authAPI = {
   updateAvatar: (data) => API.put('/auth/avatar', data),
   updateClass: (data) => API.put('/auth/class', data),
   bulkRegister: (data) => API.post('/auth/bulk-register', data),
+  changePassword: (data) => API.put('/auth/change-password', data),
 };
 
 // Attendance
@@ -83,6 +84,8 @@ export const sessionAPI = {
   getAttendance: (sessionId) => API.get(`/sessions/${sessionId}/attendance`),
   updateAttendance: (sessionId, uid, status) => API.put(`/sessions/${sessionId}/attendance/${uid}`, { status }),
   checkin: (sessionId, data) => API.post(`/sessions/${sessionId}/checkin`, data),
+  updateLocation: (sessionId, data) => API.put(`/sessions/${sessionId}/location`, data),
+  getLocations: (sessionId) => API.get(`/sessions/${sessionId}/locations`),
 };
 
 // Timetable (Thời khóa biểu)

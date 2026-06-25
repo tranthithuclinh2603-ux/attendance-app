@@ -335,4 +335,50 @@ const exportExcel = async (req, res) => {
   }
 };
 
-module.exports = { openSession, closeSession, getActiveSessions, getSessionsToday, checkinSession, getSessionAttendance, updateSessionAttendance, getSessionHistory, exportExcel };
+// Sinh viên gửi vị trí định kỳ trong phiên
+const updateLocation = async (req, res) => {
+  try {
+    const { uid, name } = req.user;
+    const { sessionId } = req.params;
+    const { lat, lng, accuracy } = req.body;
+    if (!lat || !lng) return res.status(400).json({ success: false, message: 'Thiếu tọa độ' });
+
+    const sessionSnap = await db.ref(`sessions/${sessionId}`).once('value');
+    if (!sessionSnap.exists() || sessionSnap.val().status !== 'open') {
+      return res.status(410).json({ success: false, message: 'Phiên đã đóng' });
+    }
+
+    // Tính khoảng cách tới trường (Haversine)
+    const SCHOOL = { lat: 10.813308852984058, lng: 106.77209163591941 };
+    const R = 6371000;
+    const dLat = (lat - SCHOOL.lat) * Math.PI / 180;
+    const dLng = (lng - SCHOOL.lng) * Math.PI / 180;
+    const a = Math.sin(dLat/2)**2 + Math.cos(SCHOOL.lat*Math.PI/180)*Math.cos(lat*Math.PI/180)*Math.sin(dLng/2)**2;
+    const distance = Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
+    const inZone = distance <= 300; // 300m tolerance cho tracking
+
+    await db.ref(`sessionLocations/${sessionId}/${uid}`).set({
+      name, lat, lng, accuracy: accuracy || null,
+      distance, inZone,
+      updatedAt: new Date().toISOString(),
+    });
+
+    res.json({ success: true, distance, inZone });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Lỗi server' });
+  }
+};
+
+// Giảng viên lấy vị trí realtime tất cả sinh viên trong phiên
+const getSessionLocations = async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    const snap = await db.ref(`sessionLocations/${sessionId}`).once('value');
+    const locations = snap.val() || {};
+    res.json({ success: true, locations });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Lỗi server' });
+  }
+};
+
+module.exports = { openSession, closeSession, getActiveSessions, getSessionsToday, checkinSession, getSessionAttendance, updateSessionAttendance, getSessionHistory, exportExcel, updateLocation, getSessionLocations };

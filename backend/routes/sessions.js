@@ -4,7 +4,7 @@ const { verifyToken, verifyTeacher } = require('../middleware/auth');
 const {
   openSession, closeSession, getActiveSessions, getSessionsToday,
   checkinSession, getSessionAttendance, updateSessionAttendance,
-  getSessionHistory, exportExcel,
+  getSessionHistory, exportExcel, updateLocation, getSessionLocations,
 } = require('../controllers/sessionController');
 
 router.post('/', verifyTeacher, openSession);
@@ -16,5 +16,7 @@ router.get('/export/:classId', verifyTeacher, exportExcel);
 router.get('/:sessionId/attendance', verifyTeacher, getSessionAttendance);
 router.put('/:sessionId/attendance/:uid', verifyTeacher, updateSessionAttendance);
 router.post('/:sessionId/checkin', verifyToken, checkinSession);
+router.put('/:sessionId/location', verifyToken, updateLocation);
+router.get('/:sessionId/locations', verifyTeacher, getSessionLocations);
 
 module.exports = router;

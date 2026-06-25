@@ -327,5 +327,28 @@ const saveStudentId = async (req, res) => {
   }
 };
 
+// Đổi mật khẩu (cần mật khẩu cũ)
+const changePassword = async (req, res) => {
+  try {
+    const { uid } = req.user;
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) return res.status(400).json({ success: false, message: 'Thiếu thông tin' });
+    if (newPassword.length < 6) return res.status(400).json({ success: false, message: 'Mật khẩu mới tối thiểu 6 ký tự' });
+
+    const snap = await db.ref(`users/${uid}`).once('value');
+    if (!snap.exists()) return res.status(404).json({ success: false, message: 'Không tìm thấy tài khoản' });
+
+    const isValid = await bcrypt.compare(currentPassword, snap.val().passwordHash);
+    if (!isValid) return res.status(401).json({ success: false, message: 'Mật khẩu hiện tại không đúng' });
+
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    await db.ref(`users/${uid}/passwordHash`).set(passwordHash);
+    res.json({ success: true, message: 'Đổi mật khẩu thành công' });
+  } catch (err) {
+    console.error('changePassword error:', err);
+    res.status(500).json({ success: false, message: 'Lỗi server' });
+  }
+};
+
 module.exports = { register, login, resetPassword, updateProfile, updateAvatar, updateClass, bulkRegister,
-  saveWebAuthnCredential, loginWebAuthn, saveFaceDescriptors, getMyFaceDescriptors, saveStudentId };
+  saveWebAuthnCredential, loginWebAuthn, saveFaceDescriptors, getMyFaceDescriptors, saveStudentId, changePassword };
