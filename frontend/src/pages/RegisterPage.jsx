@@ -82,6 +82,7 @@ export default function RegisterPage() {
   const [faceMsg, setFaceMsg] = useState('');
   const [capturedCount, setCapturedCount] = useState(0);
   const [faceDescriptors, setFaceDescriptors] = useState([]);
+  const [modelsReady, setModelsReady] = useState(false);
 
   // Registration result
   const [registeredUser, setRegisteredUser] = useState(null); // { id, token }
@@ -169,22 +170,31 @@ export default function RegisterPage() {
   const startFaceEnroll = async () => {
     setFaceStep('loadingModel');
     setFaceMsg('Đang bật camera...');
+    setModelsReady(false);
     try {
-      // Khởi động camera và tải model SONG SONG
-      const [stream] = await Promise.all([
-        navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 640, height: 480 } }),
-        loadFaceModels((msg) => setFaceMsg(msg)),
-      ]);
+      // 1. Bật camera trước — nhanh (< 1 giây)
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user', width: 640, height: 480 },
+      });
       streamRef.current = stream;
-      // Video sẽ được gắn bởi useEffect ở trên sau khi re-render
+
+      // 2. Hiển thị video NGAY — dùng setTimeout để chờ DOM render xong
       setFaceStep('ready');
+      setTimeout(() => {
+        if (videoRef.current) videoRef.current.srcObject = stream;
+      }, 100);
+
+      // 3. Tải model ở nền — nếu đã preload từ bước 2 thì gần như tức thì
+      setFaceMsg('Đang tải model nhận diện...');
+      await loadFaceModels((msg) => setFaceMsg(msg));
+      setModelsReady(true);
       setFaceMsg('');
     } catch (err) {
       setFaceStep('error');
       setFaceMsg(
         err.name === 'NotAllowedError'
           ? 'Bạn cần cho phép truy cập camera.'
-          : err.message || 'Không thể khởi động camera hoặc tải model'
+          : 'Không thể khởi động camera. Vui lòng thử lại.'
       );
     }
   };
@@ -478,16 +488,9 @@ export default function RegisterPage() {
 
             {/* Camera / result */}
             {faceStep === 'loadingModel' && (
-              <div className="flex flex-col items-center gap-4 py-10 bg-gray-50 rounded-xl px-6">
-                <div className="w-12 h-12 border-4 border-violet-400 border-t-transparent rounded-full animate-spin" />
-                <div className="text-center">
-                  <p className="text-gray-700 text-sm font-medium">{faceMsg || 'Đang chuẩn bị...'}</p>
-                  <p className="text-gray-400 text-xs mt-1">Lần đầu có thể mất 10–20 giây để tải dữ liệu nhận diện</p>
-                </div>
-                {/* Progress bar animation */}
-                <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
-                  <div className="h-full bg-violet-500 rounded-full animate-pulse" style={{ width: '70%' }} />
-                </div>
+              <div className="flex flex-col items-center gap-4 py-10 bg-gray-900 rounded-xl px-6" style={{ minHeight: '220px' }}>
+                <div className="w-12 h-12 border-4 border-violet-400 border-t-transparent rounded-full animate-spin mt-4" />
+                <p className="text-white text-sm text-center">{faceMsg || 'Đang bật camera...'}</p>
               </div>
             )}
 
@@ -500,22 +503,31 @@ export default function RegisterPage() {
 
             {(faceStep === 'ready' || faceStep === 'capturing') && (
               <div>
-                <div className="relative bg-gray-900 rounded-xl overflow-hidden" style={{ maxHeight: '55vh', minHeight: '200px' }}>
+                <div className="relative bg-gray-900 rounded-xl overflow-hidden" style={{ maxHeight: '55vh', minHeight: '220px' }}>
                   <video ref={videoRef} autoPlay playsInline muted className="w-full object-cover scale-x-[-1]" style={{ maxHeight: '55vh' }} />
+
+                  {/* Face oval guide */}
                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                     <div className="w-36 h-44 border-4 border-violet-400 rounded-full opacity-70" />
                   </div>
-                  {faceMsg && (
-                    <div className="absolute bottom-14 left-0 right-0 flex justify-center">
-                      <p className="bg-orange-500/90 text-white text-xs px-3 py-1 rounded-full">{faceMsg}</p>
+
+                  {/* Model loading overlay — hiện khi camera đã bật nhưng model chưa xong */}
+                  {!modelsReady && (
+                    <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center gap-2 pointer-events-none">
+                      <div className="w-7 h-7 border-3 border-white border-t-transparent rounded-full animate-spin" style={{ borderWidth: 3 }} />
+                      <p className="text-white text-xs px-3 text-center">{faceMsg || 'Đang tải model...'}</p>
                     </div>
                   )}
-                  <div className="absolute bottom-3 left-0 right-0 flex flex-col items-center gap-1">
-                    <p className="bg-black/40 text-white text-xs px-3 py-1 rounded-full">{FACE_ANGLES[capturedCount]}</p>
+
+                  {/* Angle label + capture button */}
+                  <div className="absolute bottom-3 left-0 right-0 flex flex-col items-center gap-1.5">
+                    {modelsReady && (
+                      <p className="bg-black/50 text-white text-xs px-3 py-1 rounded-full">{FACE_ANGLES[capturedCount]}</p>
+                    )}
                     <button
                       onClick={captureAngle}
-                      disabled={faceStep === 'capturing'}
-                      className="w-14 h-14 bg-white rounded-full shadow-lg flex items-center justify-center border-4 border-violet-500 active:scale-95 transition-transform disabled:opacity-60"
+                      disabled={!modelsReady || faceStep === 'capturing'}
+                      className="w-14 h-14 bg-white rounded-full shadow-lg flex items-center justify-center border-4 border-violet-500 active:scale-95 transition-transform disabled:opacity-40 disabled:scale-100"
                     >
                       <Camera size={24} className="text-violet-500" />
                     </button>
@@ -534,7 +546,7 @@ export default function RegisterPage() {
             )}
 
             <div className="flex gap-3">
-              <button onClick={() => { streamRef.current?.getTracks().forEach(t => t.stop()); setStep(2); setCapturedCount(0); setFaceDescriptors([]); setFaceStep('init'); }}
+              <button onClick={() => { streamRef.current?.getTracks().forEach(t => t.stop()); setStep(2); setCapturedCount(0); setFaceDescriptors([]); setFaceStep('init'); setModelsReady(false); setFaceMsg(''); }}
                 className="flex-1 border border-gray-300 text-gray-600 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-50">
                 Quay lại
               </button>
