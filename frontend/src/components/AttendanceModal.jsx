@@ -246,8 +246,8 @@ export default function AttendanceModal({ classId, onClose, onSuccess }) {
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 sm:p-4">
+      <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full max-w-md overflow-y-auto max-h-[95vh]">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b">
           <h2 className="font-semibold text-gray-800 flex items-center gap-2">
@@ -285,42 +285,55 @@ export default function AttendanceModal({ classId, onClose, onSuccess }) {
               {cameraError ? (
                 <div className="bg-red-50 text-red-600 rounded-lg p-4 text-sm text-center mb-4">{cameraError}</div>
               ) : (
-                <div className="relative bg-gray-900 rounded-xl overflow-hidden mb-4" style={{ aspectRatio: '4/3' }}>
-                  <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover scale-x-[-1]" />
+                <div className="relative bg-gray-900 rounded-xl overflow-hidden" style={{ maxHeight: '60vh', minHeight: '240px' }}>
+                  <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover scale-x-[-1]" style={{ maxHeight: '60vh' }} />
+                  {/* Face guide oval */}
                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <div className="w-48 h-56 border-4 border-blue-400 rounded-full opacity-60" />
+                    <div className="w-40 h-48 border-4 border-blue-400 rounded-full opacity-60" />
                   </div>
                   {/* GPS badge */}
                   <div className="absolute top-3 left-3 bg-green-500 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1">
                     <MapPin size={10} /> {gpsData?.distance}m
                   </div>
+                  {/* Hint text */}
+                  <div className="absolute bottom-14 left-0 right-0 flex justify-center pointer-events-none">
+                    <p className="bg-black/40 text-white text-xs px-3 py-1 rounded-full">Nhìn thẳng, đủ ánh sáng</p>
+                  </div>
+                  {/* Capture button overlaid on video */}
+                  <div className="absolute bottom-3 left-0 right-0 flex justify-center">
+                    <button
+                      onClick={capture}
+                      className="w-16 h-16 bg-white rounded-full shadow-lg flex items-center justify-center border-4 border-blue-500 active:scale-95 transition-transform"
+                    >
+                      <Camera size={28} className="text-blue-500" />
+                    </button>
+                  </div>
                 </div>
               )}
-              <p className="text-center text-gray-500 text-sm mb-4">Nhìn thẳng vào camera, đảm bảo ánh sáng đủ</p>
-              <button
-                onClick={capture}
-                disabled={!!cameraError}
-                className="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors"
-              >
-                <Camera size={20} /> Chụp ảnh
-              </button>
+              {cameraError && (
+                <button
+                  onClick={startCamera}
+                  className="mt-3 w-full bg-blue-500 hover:bg-blue-600 text-white py-3 rounded-xl font-medium flex items-center justify-center gap-2"
+                >
+                  <RotateCcw size={18} /> Thử lại
+                </button>
+              )}
             </div>
           )}
 
           {/* Preview step */}
           {step === 'preview' && (
             <div>
-              <div className="rounded-xl overflow-hidden mb-4" style={{ aspectRatio: '4/3' }}>
-                <img src={capturedImage} alt="Captured" className="w-full h-full object-cover scale-x-[-1]" />
-              </div>
-              <p className="text-center text-gray-600 text-sm mb-4">Ảnh có rõ ràng không?</p>
-              <div className="flex gap-3">
-                <button onClick={retake} className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors">
-                  <RotateCcw size={18} /> Chụp lại
-                </button>
-                <button onClick={confirm} className="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors">
-                  <Check size={18} /> Xác nhận
-                </button>
+              <div className="relative rounded-xl overflow-hidden" style={{ maxHeight: '60vh', minHeight: '240px' }}>
+                <img src={capturedImage} alt="Captured" className="w-full h-full object-cover scale-x-[-1]" style={{ maxHeight: '60vh' }} />
+                <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-4 px-4">
+                  <button onClick={retake} className="flex-1 bg-white/90 backdrop-blur text-gray-700 py-3 rounded-xl font-medium flex items-center justify-center gap-2 shadow">
+                    <RotateCcw size={18} /> Chụp lại
+                  </button>
+                  <button onClick={confirm} className="flex-1 bg-blue-500 text-white py-3 rounded-xl font-medium flex items-center justify-center gap-2 shadow">
+                    <Check size={18} /> Xác nhận
+                  </button>
+                </div>
               </div>
             </div>
           )}
