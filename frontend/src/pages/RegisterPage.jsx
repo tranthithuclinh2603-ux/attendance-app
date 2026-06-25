@@ -4,6 +4,34 @@ import { GraduationCap, Eye, EyeOff, AlertCircle, CheckCircle, Upload, Camera, R
 import { authAPI, biometricAPI } from '../services/api';
 import { loadFaceModels, detectFaceDescriptor, resizeImage } from '../utils/faceUtils';
 
+function getPasswordStrength(pw) {
+  if (!pw) return null;
+  let score = 0;
+  if (pw.length >= 8) score++;
+  if (pw.length >= 12) score++;
+  if (/[A-Z]/.test(pw)) score++;
+  if (/[0-9]/.test(pw)) score++;
+  if (/[^A-Za-z0-9]/.test(pw)) score++;
+  if (score <= 1) return { level: 'Yếu', color: 'bg-red-500', width: '25%', text: 'text-red-600' };
+  if (score <= 2) return { level: 'Trung bình', color: 'bg-yellow-500', width: '50%', text: 'text-yellow-600' };
+  if (score <= 3) return { level: 'Khá mạnh', color: 'bg-blue-500', width: '75%', text: 'text-blue-600' };
+  return { level: 'Mạnh', color: 'bg-green-500', width: '100%', text: 'text-green-600' };
+}
+
+function generateStrongPassword() {
+  const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+  const lower = 'abcdefghjkmnpqrstuvwxyz';
+  const digits = '23456789';
+  const special = '!@#$%&*';
+  const all = upper + lower + digits + special;
+  let pw = upper[Math.floor(Math.random() * upper.length)]
+    + lower[Math.floor(Math.random() * lower.length)]
+    + digits[Math.floor(Math.random() * digits.length)]
+    + special[Math.floor(Math.random() * special.length)];
+  for (let i = 0; i < 8; i++) pw += all[Math.floor(Math.random() * all.length)];
+  return pw.split('').sort(() => Math.random() - 0.5).join('');
+}
+
 const SCHOOL = [
   { khoa: 'Khoa Thương mại Quốc tế', nganh: [{ ten: 'Kinh doanh Xuất nhập khẩu', vietTat: 'KDXNK' }, { ten: 'Logistics', vietTat: 'LOG' }] },
   { khoa: 'Khoa Quản trị Kinh doanh', nganh: [{ ten: 'Quản trị Kinh doanh', vietTat: 'QTKD' }, { ten: 'Marketing Thương mại', vietTat: 'MKTM' }, { ten: 'Thương mại Điện tử', vietTat: 'TMDT' }, { ten: 'Quản trị Khách sạn', vietTat: 'QTKS' }, { ten: 'Quản trị Dịch vụ Du lịch & Lữ hành', vietTat: 'QTDL' }, { ten: 'Quản trị Kinh doanh Bất động sản', vietTat: 'QTBDS' }] },
@@ -30,6 +58,7 @@ export default function RegisterPage() {
   const [apiError, setApiError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPw, setShowPw] = useState(false);
+  const [showConfirmPw, setShowConfirmPw] = useState(false);
 
   // Class cascade
   const [selKhoa, setSelKhoa] = useState(SCHOOL[0].khoa);
@@ -130,12 +159,12 @@ export default function RegisterPage() {
   };
 
   // ── Step 3: Face enrollment ────────────────────────
-  // Gắn stream vào video khi DOM của bước 3 sẵn sàng
+  // Gắn stream vào video khi faceStep chuyển sang 'ready' (DOM đã render video element)
   useEffect(() => {
-    if (step === 3 && streamRef.current && videoRef.current && !videoRef.current.srcObject) {
+    if (faceStep === 'ready' && streamRef.current && videoRef.current) {
       videoRef.current.srcObject = streamRef.current;
     }
-  }, [step]);
+  }, [faceStep]);
 
   const startFaceEnroll = async () => {
     setFaceStep('loadingModel');
@@ -338,16 +367,50 @@ export default function RegisterPage() {
             )}
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Mật khẩu</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-sm font-medium text-gray-700">Mật khẩu</label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const pw = generateStrongPassword();
+                    setForm(f => ({ ...f, password: pw, confirmPassword: pw }));
+                    setErrors(er => ({ ...er, password: '', confirmPassword: '' }));
+                    setShowPw(true);
+                  }}
+                  className="text-xs text-blue-500 hover:text-blue-700 font-medium"
+                >
+                  ⚡ Tạo mật khẩu mạnh
+                </button>
+              </div>
               <div className="relative">
                 <input type={showPw ? 'text' : 'password'} name="password" value={form.password} onChange={handleChange} placeholder="Tối thiểu 6 ký tự" className={INPUT_CLS(errors.password) + ' pr-10'} />
                 <button type="button" onClick={() => setShowPw(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">{showPw ? <EyeOff size={16}/> : <Eye size={16}/>}</button>
               </div>
+              {/* Password strength */}
+              {form.password && (() => {
+                const s = getPasswordStrength(form.password);
+                return (
+                  <div className="mt-1.5">
+                    <div className="flex justify-between items-center mb-1">
+                      <div className="flex-1 bg-gray-200 rounded-full h-1.5 mr-2">
+                        <div className={`h-1.5 rounded-full transition-all ${s.color}`} style={{ width: s.width }} />
+                      </div>
+                      <span className={`text-xs font-medium ${s.text}`}>{s.level}</span>
+                    </div>
+                  </div>
+                );
+              })()}
               {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password}</p>}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Xác nhận mật khẩu</label>
-              <input type="password" name="confirmPassword" value={form.confirmPassword} onChange={handleChange} placeholder="Nhập lại mật khẩu" className={INPUT_CLS(errors.confirmPassword)} />
+              <div className="relative">
+                <input type={showConfirmPw ? 'text' : 'password'} name="confirmPassword" value={form.confirmPassword} onChange={handleChange} placeholder="Nhập lại mật khẩu" className={INPUT_CLS(errors.confirmPassword) + ' pr-10'} />
+                <button type="button" onClick={() => setShowConfirmPw(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">{showConfirmPw ? <EyeOff size={16}/> : <Eye size={16}/>}</button>
+              </div>
+              {form.confirmPassword && form.password === form.confirmPassword && (
+                <p className="text-green-500 text-xs mt-1">✓ Mật khẩu khớp</p>
+              )}
               {errors.confirmPassword && <p className="text-red-500 text-xs mt-1">{errors.confirmPassword}</p>}
             </div>
 
