@@ -824,7 +824,12 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser }) {
       )}
       {showLeave && <LeaveModal user={user} onClose={()=>setShowLeave(false)}/>}
       {toast && <Toast message={toast.message} type={toast.type} onClose={()=>setToast(null)}/>}
-      <ChatBox user={user}/>
+      <ChatBox
+        user={user}
+        timetable={timetable}
+        stats={stats}
+        attendanceHistory={history}
+      />
     </div>
   );
 }

@@ -20,7 +20,7 @@ function TypingDots() {
   );
 }
 
-export default function ChatBox({ user }) {
+export default function ChatBox({ user, timetable = [], stats = {}, attendanceHistory = [] }) {
   const [open, setOpen]       = useState(false);
   const [messages, setMessages] = useState([
     { role: 'assistant', content: `Xin chào ${user?.name?.split(' ').pop() || 'bạn'}! 👋 Mình là trợ lý AI của Điểm Danh. Mình có thể giúp gì cho bạn?` }
@@ -52,7 +52,14 @@ export default function ChatBox({ user }) {
     try {
       const res = await chatAPI.send(
         newMessages.filter(m => m.role !== 'system'),
-        { name: user?.name, mssv: user?.mssv, classId: user?.classId }
+        {
+          name: user?.name,
+          mssv: user?.mssv,
+          classId: user?.classId,
+          timetable,
+          stats,
+          attendanceHistory,
+        }
       );
       setMessages(prev => [...prev, { role: 'assistant', content: res.data.reply }]);
     } catch (err) {
