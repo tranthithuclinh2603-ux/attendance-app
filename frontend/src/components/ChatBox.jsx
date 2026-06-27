@@ -55,8 +55,12 @@ export default function ChatBox({ user }) {
         { name: user?.name, mssv: user?.mssv, classId: user?.classId }
       );
       setMessages(prev => [...prev, { role: 'assistant', content: res.data.reply }]);
-    } catch {
-      setMessages(prev => [...prev, { role: 'assistant', content: 'Xin lỗi, mình đang bị lỗi kết nối. Thử lại sau nhé!' }]);
+    } catch (err) {
+      const detail = err.response?.data?.detail || err.response?.data?.message || '';
+      const errText = detail
+        ? `Lỗi kết nối AI: ${detail}`
+        : 'Xin lỗi, mình đang bị lỗi kết nối. Thử lại sau nhé!';
+      setMessages(prev => [...prev, { role: 'assistant', content: errText }]);
     }
     setLoading(false);
   };
