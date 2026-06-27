@@ -339,9 +339,9 @@ function ProfileTab({ user, onUpdateUser, onLogout, dark, setDark }) {
   );
 
   return (
-    <div className="space-y-0 -mx-4">
-      {/* Top gradient hero */}
-      <div className="bg-gradient-to-b from-indigo-600 via-indigo-500 to-indigo-400 pt-6 pb-8 px-4 text-center">
+    <div className="space-y-3">
+      {/* Top gradient hero — full-width break out of px-4 */}
+      <div className="bg-gradient-to-b from-indigo-600 via-indigo-500 to-indigo-400 -mx-4 pt-6 pb-8 px-4 text-center">
         {/* Avatar */}
         <div className="relative inline-block mb-3">
           <div onClick={handleAvatarClick}
@@ -372,17 +372,15 @@ function ProfileTab({ user, onUpdateUser, onLogout, dark, setDark }) {
       </div>
 
       {/* Info rows */}
-      <div className="bg-white dark:bg-gray-800 mx-0 shadow-sm">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm overflow-hidden">
         <InfoRow icon={User}  label="Họ và tên" value={user?.name}  onEdit />
         <InfoRow icon={Mail}  label="Email"     value={user?.email} />
         <InfoRow icon={Hash}  label="MSSV"      value={user?.mssv}  />
         <InfoRow icon={GraduationCap} label="Lớp" value={user?.classId} />
       </div>
 
-      <div className="h-3"/>
-
       {/* Đổi mật khẩu */}
-      <div className="bg-white dark:bg-gray-800 shadow-sm">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm overflow-hidden">
         <button onClick={()=>setShowPw(p=>!p)}
           className="w-full flex items-center gap-3 px-4 py-4">
           <div className="w-9 h-9 rounded-xl bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center shrink-0">
@@ -418,19 +416,15 @@ function ProfileTab({ user, onUpdateUser, onLogout, dark, setDark }) {
         )}
       </div>
 
-      <div className="h-3"/>
-
       {/* Sinh trắc học */}
-      <div className="bg-white dark:bg-gray-800 shadow-sm px-4 py-4">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm px-4 py-4">
         <button className="w-full flex items-center justify-center gap-2 border-2 border-dashed border-indigo-200 dark:border-indigo-800 py-3.5 rounded-2xl text-indigo-600 dark:text-indigo-400 font-semibold text-sm hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors">
           <Fingerprint size={18}/> Đăng ký sinh trắc học
         </button>
       </div>
 
-      <div className="h-3"/>
-
       {/* Cài đặt + Đăng xuất */}
-      <div className="bg-white dark:bg-gray-800 shadow-sm">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm overflow-hidden">
         <button onClick={()=>setDark(d=>!d)}
           className="w-full flex items-center gap-3 px-4 py-4 border-b dark:border-gray-700/60 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
           <div className="w-9 h-9 rounded-xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center shrink-0">
@@ -776,10 +770,10 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser }) {
       )}
 
       {/* Page */}
-      <div className={`max-w-lg mx-auto py-5 ${mainTab==='profile'?'':' px-4'}`}>
+      <div className="max-w-lg mx-auto py-5 px-4">
         {mainTab==='home'       && renderHome()}
-        {mainTab==='schedule'   && <div className="px-4">{renderSchedule()}</div>}
-        {mainTab==='attendance' && <div className="px-4">{renderAttendance()}</div>}
+        {mainTab==='schedule'   && renderSchedule()}
+        {mainTab==='attendance' && renderAttendance()}
         {mainTab==='profile'    && <ProfileTab user={user} onUpdateUser={onUpdateUser} onLogout={onLogout} dark={dark} setDark={setDark}/>}
       </div>
 
