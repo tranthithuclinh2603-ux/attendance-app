@@ -1,6 +1,7 @@
-const Anthropic = require('@anthropic-ai/sdk');
+const axios = require('axios');
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
 
 const chat = async (req, res) => {
   try {
@@ -28,17 +29,24 @@ Các tính năng của app:
 Quy trình điểm danh: khi giảng viên mở phiên → sinh viên nhận thông báo → bấm "Điểm danh" → xác nhận khuôn mặt.
 Nếu không biết câu trả lời, hãy nói thật và gợi ý liên hệ giảng viên.`;
 
-    const response = await client.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 512,
-      system: systemPrompt,
-      messages: messages.map(m => ({ role: m.role, content: m.content })),
+    // Chuyển messages sang định dạng Gemini (role: user/model)
+    const geminiContents = messages.map(m => ({
+      role: m.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: m.content }],
+    }));
+
+    const response = await axios.post(GEMINI_URL, {
+      system_instruction: { parts: [{ text: systemPrompt }] },
+      contents: geminiContents,
+      generationConfig: { maxOutputTokens: 512, temperature: 0.7 },
     });
 
-    const reply = response.content[0]?.text || 'Xin lỗi, mình không hiểu câu hỏi này.';
+    const reply = response.data.candidates?.[0]?.content?.parts?.[0]?.text
+      || 'Xin lỗi, mình không hiểu câu hỏi này.';
+
     res.json({ success: true, reply });
   } catch (err) {
-    console.error('chat error:', err.message);
+    console.error('chat error:', err.response?.data || err.message);
     res.status(500).json({ success: false, message: 'Không thể kết nối trợ lý AI lúc này' });
   }
 };
