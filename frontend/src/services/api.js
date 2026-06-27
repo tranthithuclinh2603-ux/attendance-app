@@ -103,4 +103,9 @@ export const leaveAPI = {
   review: (leaveId, data) => API.put(`/leave/${leaveId}/review`, data),
 };
 
+// Chat AI
+export const chatAPI = {
+  send: (messages, userContext) => API.post('/chat', { messages, userContext }),
+};
+
 export default API;

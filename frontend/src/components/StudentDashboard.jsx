@@ -9,6 +9,7 @@ import {
 import { attendanceAPI, sessionAPI, timetableAPI, authAPI } from '../services/api';
 import AttendanceModal from './AttendanceModal';
 import LeaveModal from './LeaveModal';
+import ChatBox from './ChatBox';
 
 // ── Helpers ───────────────────────────────────────────
 const STATUS_CONFIG = {
@@ -799,6 +800,7 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser }) {
       )}
       {showLeave && <LeaveModal user={user} onClose={()=>setShowLeave(false)}/>}
       {toast && <Toast message={toast.message} type={toast.type} onClose={()=>setToast(null)}/>}
+      <ChatBox user={user}/>
     </div>
   );
 }
