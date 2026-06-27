@@ -245,8 +245,9 @@ function WeekChart({ history }) {
 
 // ── Profile Tab (giống ảnh) ───────────────────────────
 function ProfileTab({ user, onUpdateUser, onLogout, dark, setDark }) {
-  const [editName, setEditName]   = useState(false);
+  const [editField, setEditField] = useState(null); // 'name' | 'class' | null
   const [name, setName]           = useState(user?.name || '');
+  const [classId, setClassId]     = useState(user?.classId || '');
   const [saving, setSaving]       = useState(false);
   const [showPw, setShowPw]       = useState(false);
   const [pw, setPw]               = useState({ current:'', newPw:'', confirm:'' });
@@ -284,11 +285,24 @@ function ProfileTab({ user, onUpdateUser, onLogout, dark, setDark }) {
   };
 
   const saveName = async () => {
-    if (!name.trim() || name.trim()===user?.name) { setEditName(false); return; }
+    if (!name.trim() || name.trim()===user?.name) { setEditField(null); return; }
     setSaving(true);
     try { await authAPI.updateProfile({ name: name.trim() }); onUpdateUser?.(name.trim(), user?.avatar); }
     catch {}
-    setSaving(false); setEditName(false);
+    setSaving(false); setEditField(null);
+  };
+
+  const saveClass = async () => {
+    const val = classId.trim().toUpperCase();
+    if (!val || val === user?.classId) { setEditField(null); return; }
+    setSaving(true);
+    try {
+      await authAPI.updateClass({ classId: val });
+      const updated = { ...user, classId: val };
+      localStorage.setItem('user', JSON.stringify(updated));
+      onUpdateUser?.(user?.name, user?.avatar, val);
+    } catch {}
+    setSaving(false); setEditField(null);
   };
 
   const changePassword = async () => {
@@ -313,31 +327,36 @@ function ProfileTab({ user, onUpdateUser, onLogout, dark, setDark }) {
     </button>
   );
 
-  const InfoRow = ({ icon: Icon, label, value, onEdit }) => (
-    <div className="flex items-center gap-3 px-4 py-3.5 border-b dark:border-gray-700/60 last:border-0">
-      <div className="w-9 h-9 rounded-xl bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center shrink-0">
-        <Icon size={16} className="text-indigo-500"/>
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-xs text-gray-400 mb-0.5">{label}</p>
-        {onEdit && editName && label==='Họ và tên' ? (
-          <div className="flex gap-2 items-center">
-            <input value={name} onChange={e=>setName(e.target.value)} autoFocus
-              className="flex-1 text-sm font-semibold bg-transparent border-b border-indigo-400 text-gray-800 dark:text-white focus:outline-none py-0.5"/>
-            <button onClick={saveName} disabled={saving} className="text-indigo-500 p-1"><Check size={16}/></button>
-          </div>
-        ) : (
-          <p className="text-sm font-semibold text-gray-800 dark:text-white truncate">{value || '—'}</p>
+  const InfoRow = ({ icon: Icon, label, value, field, inputValue, onChange, onSave }) => {
+    const editing = editField === field;
+    return (
+      <div className="flex items-center gap-3 px-4 py-3.5 border-b dark:border-gray-700/60 last:border-0">
+        <div className="w-9 h-9 rounded-xl bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center shrink-0">
+          <Icon size={16} className="text-indigo-500"/>
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs text-gray-400 mb-0.5">{label}</p>
+          {editing ? (
+            <div className="flex gap-2 items-center">
+              <input value={inputValue} onChange={e=>onChange(e.target.value)} autoFocus
+                className="flex-1 text-sm font-semibold bg-transparent border-b border-indigo-400 text-gray-800 dark:text-white focus:outline-none py-0.5"
+                onKeyDown={e=>e.key==='Enter'&&onSave()}/>
+              <button onClick={onSave} disabled={saving} className="text-indigo-500 p-1"><Check size={16}/></button>
+              <button onClick={()=>setEditField(null)} className="text-gray-400 p-1"><XCircle size={14}/></button>
+            </div>
+          ) : (
+            <p className="text-sm font-semibold text-gray-800 dark:text-white truncate">{value || '—'}</p>
+          )}
+        </div>
+        {field && !editing && (
+          <button onClick={()=>{ setEditField(field); onChange(value||''); }}
+            className="shrink-0 p-1.5 text-gray-300 hover:text-indigo-500 dark:text-gray-600 dark:hover:text-indigo-400 transition-colors">
+            <Edit2 size={14}/>
+          </button>
         )}
       </div>
-      {onEdit && (
-        <button onClick={()=>{ if(label==='Họ và tên'){setEditName(true);setName(user?.name||'');} }}
-          className="shrink-0 p-1.5 text-gray-300 hover:text-indigo-500 dark:text-gray-600 dark:hover:text-indigo-400 transition-colors">
-          <Edit2 size={14}/>
-        </button>
-      )}
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="space-y-3">
@@ -374,10 +393,10 @@ function ProfileTab({ user, onUpdateUser, onLogout, dark, setDark }) {
 
       {/* Info rows */}
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm overflow-hidden">
-        <InfoRow icon={User}  label="Họ và tên" value={user?.name}  onEdit />
-        <InfoRow icon={Mail}  label="Email"     value={user?.email} />
-        <InfoRow icon={Hash}  label="MSSV"      value={user?.mssv}  />
-        <InfoRow icon={GraduationCap} label="Lớp" value={user?.classId} />
+        <InfoRow icon={User}         label="Họ và tên" value={user?.name}    field="name"  inputValue={name}    onChange={setName}    onSave={saveName}  />
+        <InfoRow icon={Mail}         label="Email"     value={user?.email} />
+        <InfoRow icon={Hash}         label="MSSV"      value={user?.mssv}  />
+        <InfoRow icon={GraduationCap} label="Lớp"     value={user?.classId} field="class" inputValue={classId} onChange={setClassId} onSave={saveClass} />
       </div>
 
       {/* Đổi mật khẩu */}
