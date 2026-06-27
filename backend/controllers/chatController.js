@@ -64,13 +64,11 @@ Quy trình điểm danh: giảng viên mở phiên → sinh viên bấm Điểm 
       parts: [{ text: m.content }],
     }));
 
-    // Thử nhiều model + version khác nhau
+    // gemini-2.0-flash v1 đã xác nhận hoạt động
     const attempts = [
       { version: 'v1',    model: 'gemini-2.0-flash' },
       { version: 'v1beta', model: 'gemini-2.0-flash' },
       { version: 'v1',    model: 'gemini-1.5-flash-latest' },
-      { version: 'v1beta', model: 'gemini-1.5-flash-latest' },
-      { version: 'v1',    model: 'gemini-pro' },
     ];
     let reply = null;
     let lastErr = null;
