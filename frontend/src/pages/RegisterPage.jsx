@@ -169,7 +169,11 @@ export default function RegisterPage() {
     try {
       // 1. Bật camera ngay — hiển thị video
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user', width: 640, height: 480 },
+        video: {
+          facingMode: { ideal: 'user' },
+          width: { ideal: 640 },
+          height: { ideal: 480 },
+        },
       });
       streamRef.current = stream;
       setFaceStep('loadingModels');

@@ -66,7 +66,9 @@ export default function AttendanceModal({ classId, session, onClose, onSuccess }
   const startCamera = useCallback(async () => {
     setCameraError('');
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 640, height: 480 } });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'user' }, width: { ideal: 640 }, height: { ideal: 480 } },
+      });
       streamRef.current = stream;
       if (videoRef.current) videoRef.current.srcObject = stream;
     } catch {

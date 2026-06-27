@@ -36,7 +36,7 @@ export async function extractDescriptorFromBase64(base64) {
 }
 
 // So sánh 1 descriptor với 1 descriptor (dùng để xác minh thẻ SV)
-export function compareTwoDescriptors(a, b, threshold = 0.55) {
+export function compareTwoDescriptors(a, b, threshold = 0.42) {
   if (!a || !b) return { match: false, confidence: 0, distance: 99 };
   const dist = euclidean(a, b);
   const confidence = Math.max(0, Math.round((1 - dist / threshold) * 100));
@@ -59,8 +59,8 @@ export function euclidean(a, b) {
 }
 
 // So sánh descriptor sống với mảng descriptors đã lưu
-// threshold mặc định 0.55 (chặt hơn 0.6 tiêu chuẩn để tránh giả mạo)
-export function matchDescriptor(live, stored, threshold = 0.55) {
+// threshold 0.42 — nghiêm ngặt, giảm nguy cơ giả mạo khuôn mặt
+export function matchDescriptor(live, stored, threshold = 0.42) {
   if (!stored?.length) return { match: false, confidence: 0, distance: 99 };
   let min = Infinity;
   for (const s of stored) {

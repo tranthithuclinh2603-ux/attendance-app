@@ -1,8 +1,5 @@
 const axios = require('axios');
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
-
 const chat = async (req, res) => {
   try {
     const { messages, userContext } = req.body;
@@ -35,7 +32,14 @@ Nếu không biết câu trả lời, hãy nói thật và gợi ý liên hệ g
       parts: [{ text: m.content }],
     }));
 
-    const response = await axios.post(GEMINI_URL, {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      console.error('GEMINI_API_KEY chưa được cấu hình');
+      return res.status(500).json({ success: false, message: 'Chưa cấu hình API key' });
+    }
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+
+    const response = await axios.post(geminiUrl, {
       system_instruction: { parts: [{ text: systemPrompt }] },
       contents: geminiContents,
       generationConfig: { maxOutputTokens: 512, temperature: 0.7 },
