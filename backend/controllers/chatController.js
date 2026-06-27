@@ -5,16 +5,26 @@ const testChat = async (req, res) => {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return res.json({ ok: false, error: 'GEMINI_API_KEY chưa set' });
 
-  try {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-    const r = await axios.post(url, {
-      contents: [{ role: 'user', parts: [{ text: 'Xin chào' }] }],
-    });
-    const text = r.data.candidates?.[0]?.content?.parts?.[0]?.text;
-    res.json({ ok: true, reply: text });
-  } catch (err) {
-    res.json({ ok: false, error: err.response?.data?.error || err.message });
+  const attempts = [
+    { version: 'v1',    model: 'gemini-2.0-flash' },
+    { version: 'v1beta', model: 'gemini-2.0-flash' },
+    { version: 'v1',    model: 'gemini-1.5-flash-latest' },
+    { version: 'v1beta', model: 'gemini-1.5-flash-latest' },
+    { version: 'v1',    model: 'gemini-pro' },
+  ];
+  const results = [];
+  for (const { version, model } of attempts) {
+    try {
+      const url = `https://generativelanguage.googleapis.com/${version}/models/${model}:generateContent?key=${apiKey}`;
+      const r = await axios.post(url, { contents: [{ role: 'user', parts: [{ text: 'Xin chào' }] }] });
+      const text = r.data.candidates?.[0]?.content?.parts?.[0]?.text;
+      results.push({ version, model, ok: true, reply: text });
+      if (text) break;
+    } catch (e) {
+      results.push({ version, model, ok: false, error: e.response?.data?.error?.message || e.message });
+    }
   }
+  res.json({ results });
 };
 
 const chat = async (req, res) => {
@@ -54,24 +64,36 @@ Quy trình điểm danh: giảng viên mở phiên → sinh viên bấm Điểm 
       parts: [{ text: m.content }],
     }));
 
-    // Thử gemini-2.0-flash trước, fallback gemini-1.5-flash
-    const models = ['gemini-2.0-flash', 'gemini-1.5-flash'];
+    // Thử nhiều model + version khác nhau
+    const attempts = [
+      { version: 'v1',    model: 'gemini-2.0-flash' },
+      { version: 'v1beta', model: 'gemini-2.0-flash' },
+      { version: 'v1',    model: 'gemini-1.5-flash-latest' },
+      { version: 'v1beta', model: 'gemini-1.5-flash-latest' },
+      { version: 'v1',    model: 'gemini-pro' },
+    ];
     let reply = null;
     let lastErr = null;
 
-    for (const model of models) {
+    // Nhúng system prompt vào tin nhắn đầu (tránh lỗi system_instruction)
+    const contentsWithSystem = [
+      { role: 'user', parts: [{ text: `[Hướng dẫn hệ thống]: ${systemPrompt}\n\nOK, tôi hiểu.` }] },
+      { role: 'model', parts: [{ text: 'Tôi hiểu, tôi sẽ hỗ trợ bạn theo đúng hướng dẫn.' }] },
+      ...contents,
+    ];
+
+    for (const { version, model } of attempts) {
       try {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+        const url = `https://generativelanguage.googleapis.com/${version}/models/${model}:generateContent?key=${apiKey}`;
         const r = await axios.post(url, {
-          system_instruction: { parts: [{ text: systemPrompt }] },
-          contents,
+          contents: contentsWithSystem,
           generationConfig: { maxOutputTokens: 600, temperature: 0.8 },
         });
         reply = r.data.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (reply) break;
+        if (reply) { console.log(`[chat] success with ${version}/${model}`); break; }
       } catch (e) {
         lastErr = e;
-        console.error(`[chat] model ${model} failed:`, e.response?.data?.error?.message || e.message);
+        console.error(`[chat] ${version}/${model} failed:`, e.response?.data?.error?.message || e.message);
       }
     }
 
