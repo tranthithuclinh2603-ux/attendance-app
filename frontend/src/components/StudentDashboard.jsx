@@ -244,11 +244,12 @@ function WeekChart({ history }) {
 }
 
 // ── Profile Tab (giống ảnh) ───────────────────────────
-function ProfileTab({ user, onUpdateUser, onLogout, dark, setDark }) {
-  const [editField, setEditField] = useState(null); // 'name' | 'class' | null
-  const [name, setName]           = useState(user?.name || '');
-  const [classId, setClassId]     = useState(user?.classId || '');
-  const [saving, setSaving]       = useState(false);
+function ProfileTab({ user, onUpdateUser, onLogout, dark, setDark, showToast }) {
+  const [editField, setEditField]       = useState(null); // 'name' | 'class' | null
+  const [name, setName]                 = useState(user?.name || '');
+  const [classId, setClassId]           = useState(user?.classId || '');
+  const [displayClassId, setDisplayClassId] = useState(user?.classId || '');
+  const [saving, setSaving]             = useState(false);
   const [showPw, setShowPw]       = useState(false);
   const [pw, setPw]               = useState({ current:'', newPw:'', confirm:'' });
   const [showEye, setShowEye]     = useState({ current:false, newPw:false, confirm:false });
@@ -293,15 +294,19 @@ function ProfileTab({ user, onUpdateUser, onLogout, dark, setDark }) {
   };
 
   const saveClass = async () => {
-    const val = classId.trim().toUpperCase();
-    if (!val || val === user?.classId) { setEditField(null); return; }
+    const val = classId.trim();
+    if (!val || val === displayClassId) { setEditField(null); return; }
     setSaving(true);
     try {
       await authAPI.updateClass({ classId: val });
+      setDisplayClassId(val);
       const updated = { ...user, classId: val };
       localStorage.setItem('user', JSON.stringify(updated));
       onUpdateUser?.(user?.name, user?.avatar, val);
-    } catch {}
+      showToast?.('Đã cập nhật lớp thành công!', 'success');
+    } catch (err) {
+      showToast?.(err.response?.data?.message || 'Cập nhật lớp thất bại', 'error');
+    }
     setSaving(false); setEditField(null);
   };
 
@@ -396,7 +401,7 @@ function ProfileTab({ user, onUpdateUser, onLogout, dark, setDark }) {
         <InfoRow icon={User}         label="Họ và tên" value={user?.name}    field="name"  inputValue={name}    onChange={setName}    onSave={saveName}  />
         <InfoRow icon={Mail}         label="Email"     value={user?.email} />
         <InfoRow icon={Hash}         label="MSSV"      value={user?.mssv}  />
-        <InfoRow icon={GraduationCap} label="Lớp"     value={user?.classId} field="class" inputValue={classId} onChange={setClassId} onSave={saveClass} />
+        <InfoRow icon={GraduationCap} label="Lớp"     value={displayClassId} field="class" inputValue={classId} onChange={setClassId} onSave={saveClass} />
       </div>
 
       {/* Đổi mật khẩu */}
@@ -794,7 +799,7 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser }) {
         {mainTab==='home'       && renderHome()}
         {mainTab==='schedule'   && renderSchedule()}
         {mainTab==='attendance' && renderAttendance()}
-        {mainTab==='profile'    && <ProfileTab user={user} onUpdateUser={onUpdateUser} onLogout={onLogout} dark={dark} setDark={setDark}/>}
+        {mainTab==='profile'    && <ProfileTab user={user} onUpdateUser={onUpdateUser} onLogout={onLogout} dark={dark} setDark={setDark} showToast={showToast}/>}
       </div>
 
       {/* Bottom nav */}
