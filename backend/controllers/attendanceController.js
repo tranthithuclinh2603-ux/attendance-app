@@ -342,4 +342,74 @@ const qrCheckin = async (req, res) => {
   }
 };
 
-module.exports = { checkin, getHistory, getClassAttendance, updateAttendance, deleteAttendance, getLeaderboard, getAbsenceAlerts, manualCheckin, qrCheckin };
+// Thống kê theo tuần: trả về 7 ngày gần nhất với số liệu mỗi ngày
+const getWeeklyStats = async (req, res) => {
+  try {
+    const { classId } = req.params;
+    const { weeks = 1 } = req.query; // số tuần muốn xem (1-4)
+    const days = Math.min(parseInt(weeks) * 7, 28);
+
+    const today = new Date();
+    const dates = [];
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      dates.push(d.toISOString().split('T')[0]);
+    }
+
+    // Lấy danh sách sinh viên
+    const studentsSnap = await db.ref('users').orderByChild('classId').equalTo(classId).once('value');
+    const studentUids = [];
+    let totalStudents = 0;
+    studentsSnap.forEach((child) => {
+      if (child.val().role === 'student') {
+        studentUids.push(child.key);
+        totalStudents++;
+      }
+    });
+
+    // Thống kê từng ngày
+    const dailyStats = [];
+    for (const date of dates) {
+      const snap = await db.ref(`attendance/${classId}_${date}`).once('value');
+      const data = snap.val() || {};
+      let present = 0, late = 0, absent = 0;
+      for (const uid of studentUids) {
+        const r = data[uid];
+        if (!r || r.status === 'absent') absent++;
+        else if (r.status === 'late') late++;
+        else present++;
+      }
+      dailyStats.push({ date, present, late, absent, total: totalStudents });
+    }
+
+    // Top 5 sinh viên vắng nhiều nhất
+    const absentCount = {};
+    studentsSnap.forEach((child) => {
+      if (child.val().role === 'student') {
+        absentCount[child.key] = { name: child.val().name, mssv: child.val().mssv, absent: 0, late: 0, present: 0 };
+      }
+    });
+    for (const date of dates) {
+      const snap = await db.ref(`attendance/${classId}_${date}`).once('value');
+      const data = snap.val() || {};
+      for (const uid of studentUids) {
+        const r = data[uid];
+        if (!r || r.status === 'absent') absentCount[uid].absent++;
+        else if (r.status === 'late') absentCount[uid].late++;
+        else absentCount[uid].present++;
+      }
+    }
+    const topAbsent = Object.values(absentCount)
+      .filter(s => s.absent > 0)
+      .sort((a, b) => b.absent - a.absent)
+      .slice(0, 5);
+
+    res.json({ success: true, dailyStats, topAbsent, totalStudents, days });
+  } catch (err) {
+    console.error('Weekly stats error:', err);
+    res.status(500).json({ success: false, message: 'Lỗi server' });
+  }
+};
+
+module.exports = { checkin, getHistory, getClassAttendance, updateAttendance, deleteAttendance, getLeaderboard, getAbsenceAlerts, manualCheckin, qrCheckin, getWeeklyStats };

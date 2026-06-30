@@ -48,6 +48,7 @@ export const attendanceAPI = {
   deleteAttendance: (attendanceId) => API.delete(`/attendance/${attendanceId}`),
   getLeaderboard: (classId) => API.get(`/attendance/leaderboard/${classId}`),
   getAbsenceAlerts: (classId) => API.get(`/attendance/alerts/${classId}`),
+  getWeeklyStats: (classId, weeks) => API.get(`/attendance/weekly/${classId}`, { params: { weeks } }),
   manualCheckin: (data) => API.post('/attendance/manual', data),
   qrCheckin: (data) => API.post('/attendance/qr-checkin', data),
 };

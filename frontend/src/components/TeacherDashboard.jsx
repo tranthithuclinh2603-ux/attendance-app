@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { RefreshCw, Download, Users, CheckCircle, Clock, XCircle, AlertTriangle, Search, BarChart2, FileText, PlusCircle, Grid, Upload } from 'lucide-react';
+import { RefreshCw, Download, Users, CheckCircle, Clock, XCircle, AlertTriangle, Search, BarChart2, FileText, PlusCircle, Grid, Upload, TrendingUp, TrendingDown, Award } from 'lucide-react';
 import LeavePanel from './LeavePanel';
 import SessionPanel from './SessionPanel';
 import * as XLSX from 'xlsx';
@@ -130,6 +130,195 @@ function AlertsPanel({ classId }) {
           </span>
         </div>
       ))}
+    </div>
+  );
+}
+
+const DAY_LABELS = { 'Mon': 'T2', 'Tue': 'T3', 'Wed': 'T4', 'Thu': 'T5', 'Fri': 'T6', 'Sat': 'T7', 'Sun': 'CN' };
+
+function MiniBarChart({ dailyStats }) {
+  if (!dailyStats?.length) return null;
+  const maxVal = Math.max(...dailyStats.map(d => d.total), 1);
+
+  return (
+    <div className="flex items-end gap-1 h-24 mt-2">
+      {dailyStats.map((d, i) => {
+        const presentH = ((d.present + d.late) / maxVal) * 96;
+        const absentH = (d.absent / maxVal) * 96;
+        const dayName = new Date(d.date + 'T00:00:00').toLocaleDateString('en', { weekday: 'short' });
+        const label = DAY_LABELS[dayName] || dayName;
+        const dateShort = d.date.slice(5); // MM-DD
+        const attendRate = d.total ? Math.round(((d.present + d.late) / d.total) * 100) : 0;
+        return (
+          <div key={i} className="flex-1 flex flex-col items-center gap-0.5 group relative">
+            {/* Tooltip */}
+            <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 hidden group-hover:block z-10 bg-gray-800 text-white text-xs rounded-lg px-2 py-1.5 whitespace-nowrap shadow-lg">
+              <p className="font-medium">{dateShort}</p>
+              <p className="text-green-300">Có mặt: {d.present + d.late}</p>
+              <p className="text-red-300">Vắng: {d.absent}</p>
+              <p className="text-blue-300">Tỉ lệ: {attendRate}%</p>
+            </div>
+            <div className="w-full flex flex-col justify-end" style={{ height: 80 }}>
+              <div className="w-full rounded-t-sm bg-red-300 dark:bg-red-500" style={{ height: absentH }} />
+              <div className="w-full rounded-t-sm bg-blue-400 dark:bg-blue-500" style={{ height: presentH }} />
+            </div>
+            <span className="text-[10px] text-gray-400">{label}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function StatsTab({ classId, stats, pct }) {
+  const [weeklyData, setWeeklyData] = useState(null);
+  const [loadingWeekly, setLoadingWeekly] = useState(false);
+  const [weeks, setWeeks] = useState(1);
+
+  useEffect(() => {
+    setLoadingWeekly(true);
+    attendanceAPI.getWeeklyStats(classId, weeks)
+      .then(res => setWeeklyData(res.data))
+      .catch(() => setWeeklyData(null))
+      .finally(() => setLoadingWeekly(false));
+  }, [classId, weeks]);
+
+  const avgRate = weeklyData?.dailyStats?.length
+    ? Math.round(weeklyData.dailyStats.reduce((acc, d) => acc + (d.total ? (d.present + d.late) / d.total * 100 : 0), 0) / weeklyData.dailyStats.length)
+    : null;
+
+  const trend = weeklyData?.dailyStats?.length >= 2
+    ? (() => {
+        const half = Math.floor(weeklyData.dailyStats.length / 2);
+        const first = weeklyData.dailyStats.slice(0, half);
+        const second = weeklyData.dailyStats.slice(half);
+        const avg = arr => arr.reduce((a, d) => a + (d.total ? (d.present + d.late) / d.total * 100 : 0), 0) / arr.length;
+        return avg(second) - avg(first);
+      })()
+    : null;
+
+  return (
+    <div className="p-5 space-y-5">
+      {/* Header */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <h4 className="font-semibold text-gray-800 dark:text-white flex items-center gap-2">
+          <BarChart2 size={18} className="text-blue-500" />
+          Dashboard Thống kê — {classId}
+        </h4>
+        <div className="flex gap-2">
+          {[1, 2, 4].map(w => (
+            <button key={w} onClick={() => setWeeks(w)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${weeks === w ? 'bg-blue-500 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200'}`}>
+              {w === 1 ? '7 ngày' : w === 2 ? '2 tuần' : '4 tuần'}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Stat cards hôm nay */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {[
+          { label: 'Có mặt hôm nay', value: stats.present, color: 'green', Icon: CheckCircle },
+          { label: 'Muộn hôm nay', value: stats.late, color: 'yellow', Icon: Clock },
+          { label: 'Vắng hôm nay', value: stats.absent, color: 'red', Icon: XCircle },
+          { label: 'Tỉ lệ tham dự', value: `${pct(stats.present + stats.late)}%`, color: 'blue', Icon: Users },
+        ].map(({ label, value, color, Icon }) => (
+          <div key={label} className={`bg-${color}-50 dark:bg-${color}-900/20 rounded-2xl p-4`}>
+            <Icon size={18} className={`text-${color}-500 mb-2`} />
+            <p className={`text-2xl font-bold text-${color}-600 dark:text-${color}-400`}>{value}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{label}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Biểu đồ xu hướng */}
+      <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl p-4">
+        <div className="flex items-center justify-between mb-1">
+          <p className="text-sm font-semibold text-gray-700 dark:text-white">Xu hướng điểm danh</p>
+          {avgRate !== null && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-bold text-blue-600 dark:text-blue-400">TB: {avgRate}%</span>
+              {trend !== null && (
+                <span className={`flex items-center gap-0.5 text-xs font-medium ${trend >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                  {trend >= 0 ? <TrendingUp size={14}/> : <TrendingDown size={14}/>}
+                  {Math.abs(Math.round(trend))}%
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+        <div className="flex gap-3 text-xs text-gray-400 mb-1">
+          <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-blue-400 inline-block"/>Có mặt</span>
+          <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-red-300 inline-block"/>Vắng</span>
+        </div>
+        {loadingWeekly ? (
+          <div className="h-24 flex items-center justify-center text-gray-400 text-sm">Đang tải...</div>
+        ) : (
+          <MiniBarChart dailyStats={weeklyData?.dailyStats} />
+        )}
+      </div>
+
+      {/* Top vắng nhiều */}
+      <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl overflow-hidden">
+        <div className="px-4 py-3 border-b dark:border-gray-700 flex items-center gap-2">
+          <Award size={16} className="text-orange-500" />
+          <p className="text-sm font-semibold text-gray-700 dark:text-white">Top sinh viên vắng nhiều nhất ({weeks === 1 ? '7 ngày' : weeks === 2 ? '2 tuần' : '4 tuần'})</p>
+        </div>
+        {loadingWeekly ? (
+          <div className="py-6 text-center text-gray-400 text-sm">Đang tải...</div>
+        ) : !weeklyData?.topAbsent?.length ? (
+          <div className="py-6 text-center text-gray-400 text-sm">Không có sinh viên vắng nào</div>
+        ) : (
+          <div className="divide-y dark:divide-gray-700">
+            {weeklyData.topAbsent.map((s, i) => {
+              const absentRate = weeklyData.days ? Math.round((s.absent / weeklyData.days) * 100) : 0;
+              return (
+                <div key={i} className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                  <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                    i === 0 ? 'bg-red-100 text-red-600' : i === 1 ? 'bg-orange-100 text-orange-600' : 'bg-gray-100 text-gray-600'
+                  }`}>{i + 1}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-800 dark:text-white truncate">{s.name}</p>
+                    <p className="text-xs text-gray-400">{s.mssv}</p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-sm font-bold text-red-500">{s.absent} buổi vắng</p>
+                    <p className="text-xs text-gray-400">{s.present + s.late} có mặt · {s.late} muộn</p>
+                  </div>
+                  <div className="w-16">
+                    <div className="bg-gray-100 dark:bg-gray-700 rounded-full h-1.5">
+                      <div className="bg-red-400 h-1.5 rounded-full" style={{ width: `${absentRate}%` }} />
+                    </div>
+                    <p className="text-[10px] text-gray-400 text-right mt-0.5">{absentRate}%</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Bars ngày hôm nay */}
+      {stats.total > 0 && (
+        <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl p-4 space-y-3">
+          <p className="text-sm font-semibold text-gray-700 dark:text-white">Chi tiết hôm nay</p>
+          {[
+            { label: 'Có mặt', value: stats.present, color: 'bg-green-400', text: 'text-green-600' },
+            { label: 'Muộn', value: stats.late, color: 'bg-yellow-400', text: 'text-yellow-600' },
+            { label: 'Vắng', value: stats.absent, color: 'bg-red-400', text: 'text-red-600' },
+          ].map(({ label, value, color, text }) => (
+            <div key={label}>
+              <div className="flex justify-between text-sm mb-1">
+                <span className="text-gray-600 dark:text-gray-300">{label}</span>
+                <span className={`font-semibold ${text}`}>{value} người ({pct(value)}%)</span>
+              </div>
+              <div className="bg-gray-100 dark:bg-gray-700 rounded-full h-2.5">
+                <div className={`${color} h-2.5 rounded-full transition-all`} style={{ width: `${pct(value)}%` }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -566,60 +755,8 @@ export default function TeacherDashboard({ user, onLogout, onUpdateUser }) {
           {activeTab === 'leave' && <LeavePanel classId={selectedClass} />}
 
           {/* Stats tab */}
-
           {activeTab === 'stats' && (
-            <div className="p-5 space-y-5">
-              <h4 className="font-semibold text-gray-800 flex items-center gap-2">
-                <BarChart2 size={18} className="text-blue-500" />
-                Thống kê lớp {selectedClass} — {selectedDate}
-              </h4>
-
-              {stats.total === 0 ? (
-                <p className="text-gray-400 text-sm text-center py-6">Không có dữ liệu cho ngày này</p>
-              ) : (
-                <div className="space-y-4">
-                  {/* Attendance rate */}
-                  <div className="bg-blue-50 rounded-xl p-4">
-                    <p className="text-sm font-medium text-gray-700 mb-1">Tỷ lệ có mặt hôm nay</p>
-                    <p className="text-3xl font-bold text-blue-600">{pct(stats.present + stats.late)}%</p>
-                    <p className="text-xs text-gray-500 mt-1">{stats.present + stats.late}/{stats.total} sinh viên</p>
-                  </div>
-
-                  {/* Bars */}
-                  {[
-                    { label: 'Có mặt', value: stats.present, color: 'bg-green-400', text: 'text-green-600' },
-                    { label: 'Muộn', value: stats.late, color: 'bg-yellow-400', text: 'text-yellow-600' },
-                    { label: 'Vắng', value: stats.absent, color: 'bg-red-400', text: 'text-red-600' },
-                  ].map(({ label, value, color, text }) => (
-                    <div key={label}>
-                      <div className="flex justify-between text-sm mb-1.5">
-                        <span className="text-gray-600">{label}</span>
-                        <span className={`font-semibold ${text}`}>{value} người ({pct(value)}%)</span>
-                      </div>
-                      <div className="bg-gray-100 rounded-full h-3">
-                        <div className={`${color} h-3 rounded-full transition-all`} style={{ width: `${pct(value)}%` }} />
-                      </div>
-                    </div>
-                  ))}
-
-                  {/* Summary */}
-                  <div className="grid grid-cols-3 gap-3 mt-4">
-                    <div className="text-center bg-green-50 rounded-xl py-3">
-                      <p className="text-xl font-bold text-green-600">{pct(stats.present)}%</p>
-                      <p className="text-xs text-gray-500">Đúng giờ</p>
-                    </div>
-                    <div className="text-center bg-yellow-50 rounded-xl py-3">
-                      <p className="text-xl font-bold text-yellow-600">{pct(stats.late)}%</p>
-                      <p className="text-xs text-gray-500">Muộn</p>
-                    </div>
-                    <div className="text-center bg-red-50 rounded-xl py-3">
-                      <p className="text-xl font-bold text-red-600">{pct(stats.absent)}%</p>
-                      <p className="text-xs text-gray-500">Vắng</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
+            <StatsTab classId={selectedClass} stats={stats} pct={pct} />
           )}
         </div>
       </div>

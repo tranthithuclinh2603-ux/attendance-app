@@ -1,0 +1,27 @@
+const sharp = require('sharp');
+const fs = require('fs');
+const path = require('path');
+
+const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">
+  <rect width="192" height="192" rx="36" fill="#4f46e5"/>
+  <rect x="16" y="16" width="160" height="160" rx="28" fill="#4338ca"/>
+  <polygon points="96,52 148,76 96,100 44,76" fill="white" opacity="0.95"/>
+  <rect x="88" y="98" width="16" height="36" fill="white" opacity="0.95"/>
+  <ellipse cx="96" cy="134" rx="22" ry="12" fill="white" opacity="0.95"/>
+  <rect x="142" y="76" width="8" height="30" rx="4" fill="white" opacity="0.7"/>
+  <circle cx="146" cy="108" r="5" fill="#a5b4fc"/>
+  <circle cx="136" cy="52" r="22" fill="#22c55e"/>
+  <polyline points="125,52 133,61 150,43" stroke="white" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+</svg>`;
+
+const outDir = path.join(__dirname, 'public');
+
+async function generate() {
+  const buf = Buffer.from(svgContent);
+  for (const size of [192, 512]) {
+    await sharp(buf).resize(size, size).png().toFile(path.join(outDir, `icon-${size}.png`));
+    console.log(`✓ icon-${size}.png`);
+  }
+}
+
+generate().catch(console.error);
