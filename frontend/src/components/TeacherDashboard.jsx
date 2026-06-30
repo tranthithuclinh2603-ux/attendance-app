@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { RefreshCw, Download, Users, CheckCircle, Clock, XCircle, AlertTriangle, Search, BarChart2, FileText, PlusCircle, Grid, Upload, TrendingUp, TrendingDown, Award } from 'lucide-react';
+import { RefreshCw, Download, Users, CheckCircle, Clock, XCircle, AlertTriangle, Search, BarChart2, FileText, PlusCircle, Grid, Upload, TrendingUp, TrendingDown, Award, CalendarRange } from 'lucide-react';
 import LeavePanel from './LeavePanel';
 import SessionPanel from './SessionPanel';
 import * as XLSX from 'xlsx';
@@ -130,6 +130,211 @@ function AlertsPanel({ classId }) {
           </span>
         </div>
       ))}
+    </div>
+  );
+}
+
+function ReportTab({ classId }) {
+  const today = new Date().toISOString().slice(0, 10);
+  const weekAgo = new Date(Date.now() - 6 * 86400000).toISOString().slice(0, 10);
+  const [from, setFrom] = useState(weekAgo);
+  const [to, setTo] = useState(today);
+  const [report, setReport] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const load = async () => {
+    if (!from || !to || from > to) { setError('Ngày không hợp lệ'); return; }
+    setError(''); setLoading(true);
+    try {
+      const res = await attendanceAPI.getRangeReport(classId, from, to);
+      setReport(res.data);
+    } catch (e) {
+      setError(e.response?.data?.message || 'Lỗi tải báo cáo');
+    } finally { setLoading(false); }
+  };
+
+  const exportExcel = () => {
+    if (!report) return;
+    const { studentList, dates, classId: cls, from: f, to: t } = report;
+
+    // Sheet 1: Tổng hợp
+    const summary = studentList.map((s, i) => ({
+      STT: i + 1, 'Họ tên': s.name, MSSV: s.mssv,
+      'Có mặt': s.present, 'Muộn': s.late, 'Vắng': s.absent,
+      'Tổng buổi': s.total, 'Tỉ lệ (%)': s.rate,
+    }));
+
+    // Sheet 2: Chi tiết từng ngày
+    const detail = studentList.map((s, i) => {
+      const row = { STT: i + 1, 'Họ tên': s.name, MSSV: s.mssv };
+      dates.forEach(d => {
+        const st = s.days[d] || 'absent';
+        row[d] = st === 'present' ? 'CM' : st === 'late' ? 'M' : 'V';
+      });
+      row['Tỉ lệ (%)'] = s.rate;
+      return row;
+    });
+
+    const wb = XLSX.utils.book_new();
+    const ws1 = XLSX.utils.json_to_sheet(summary);
+    ws1['!cols'] = [{ wch: 5 }, { wch: 25 }, { wch: 12 }, { wch: 9 }, { wch: 7 }, { wch: 7 }, { wch: 10 }, { wch: 10 }];
+    XLSX.utils.book_append_sheet(wb, ws1, 'Tổng hợp');
+
+    const ws2 = XLSX.utils.json_to_sheet(detail);
+    XLSX.utils.book_append_sheet(wb, ws2, 'Chi tiết');
+    XLSX.writeFile(wb, `BaoCao_${cls}_${f}_${t}.xlsx`);
+  };
+
+  const exportPDF = () => {
+    if (!report) return;
+    const { studentList, classId: cls, from: f, to: t } = report;
+    const rows = studentList.map((s, i) => {
+      const rateColor = s.rate >= 80 ? '#16a34a' : s.rate >= 60 ? '#d97706' : '#dc2626';
+      return `<tr>
+        <td>${i + 1}</td><td>${s.name}</td><td>${s.mssv}</td>
+        <td class="present">${s.present}</td><td class="late">${s.late}</td><td class="absent">${s.absent}</td>
+        <td>${s.total}</td><td style="color:${rateColor};font-weight:700">${s.rate}%</td>
+      </tr>`;
+    }).join('');
+
+    const html = `<!DOCTYPE html><html lang="vi"><head><meta charset="UTF-8"/>
+<title>Báo cáo ${cls}</title>
+<style>
+  body{font-family:Arial,sans-serif;font-size:12px;padding:24px}
+  h1{font-size:16px;text-align:center;text-transform:uppercase;margin-bottom:8px}
+  .meta{font-size:11px;text-align:center;color:#555;margin-bottom:12px}
+  table{width:100%;border-collapse:collapse}
+  th{background:#3b82f6;color:#fff;padding:8px 6px;font-size:11px;text-align:left}
+  td{padding:7px 6px;border-bottom:1px solid #e5e7eb;font-size:11px}
+  tr:nth-child(even) td{background:#f9fafb}
+  .present{color:#16a34a;font-weight:600}.late{color:#d97706;font-weight:600}.absent{color:#dc2626;font-weight:600}
+  @media print{body{padding:10px}}
+</style></head><body>
+<h1>Báo cáo Điểm Danh Tổng Hợp</h1>
+<p class="meta">Lớp: <b>${cls}</b> &nbsp;|&nbsp; Từ <b>${f}</b> đến <b>${to}</b> &nbsp;|&nbsp; Trường Cao Đẳng Kinh Tế Đối Ngoại</p>
+<table>
+  <thead><tr><th>STT</th><th>Họ tên</th><th>MSSV</th><th>Có mặt</th><th>Muộn</th><th>Vắng</th><th>Tổng</th><th>Tỉ lệ</th></tr></thead>
+  <tbody>${rows}</tbody>
+</table>
+</body></html>`;
+    const w = window.open('', '_blank');
+    w.document.write(html); w.document.close();
+    setTimeout(() => w.print(), 300);
+  };
+
+  const presets = [
+    { label: '7 ngày', days: 6 },
+    { label: '2 tuần', days: 13 },
+    { label: '1 tháng', days: 29 },
+  ];
+
+  return (
+    <div className="p-5 space-y-5">
+      <h4 className="font-semibold text-gray-800 dark:text-white flex items-center gap-2">
+        <CalendarRange size={18} className="text-blue-500"/> Báo cáo tổng hợp — {classId}
+      </h4>
+
+      {/* Bộ lọc */}
+      <div className="bg-gray-50 dark:bg-gray-700/50 rounded-2xl p-4 space-y-3">
+        <div className="flex flex-wrap gap-2">
+          {presets.map(p => (
+            <button key={p.label} onClick={() => {
+              const f = new Date(Date.now() - p.days * 86400000).toISOString().slice(0, 10);
+              setFrom(f); setTo(today); setReport(null);
+            }} className="px-3 py-1.5 text-xs bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-blue-50 hover:border-blue-300 transition-colors">
+              {p.label}
+            </button>
+          ))}
+        </div>
+        <div className="flex flex-wrap gap-3 items-end">
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Từ ngày</label>
+            <input type="date" value={from} onChange={e => { setFrom(e.target.value); setReport(null); }}
+              className="border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+          </div>
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Đến ngày</label>
+            <input type="date" value={to} onChange={e => { setTo(e.target.value); setReport(null); }}
+              className="border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+          </div>
+          <button onClick={load} disabled={loading}
+            className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50 transition-colors">
+            <RefreshCw size={15} className={loading ? 'animate-spin' : ''}/> {loading ? 'Đang tải...' : 'Tạo báo cáo'}
+          </button>
+        </div>
+        {error && <p className="text-red-500 text-sm">{error}</p>}
+      </div>
+
+      {/* Kết quả */}
+      {report && (
+        <>
+          {/* Tóm tắt + nút xuất */}
+          <div className="flex flex-wrap gap-3 items-center justify-between">
+            <div className="flex gap-4 text-sm text-gray-600 dark:text-gray-300">
+              <span><b className="text-gray-800 dark:text-white">{report.studentList.length}</b> sinh viên</span>
+              <span><b className="text-gray-800 dark:text-white">{report.dates.length}</b> ngày</span>
+              <span>TB tỉ lệ: <b className="text-blue-600">{
+                report.studentList.length
+                  ? Math.round(report.studentList.reduce((a, s) => a + s.rate, 0) / report.studentList.length)
+                  : 0
+              }%</b></span>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={exportExcel}
+                className="flex items-center gap-1.5 bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors">
+                <Download size={15}/> Excel
+              </button>
+              <button onClick={exportPDF}
+                className="flex items-center gap-1.5 bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors">
+                <FileText size={15}/> PDF
+              </button>
+            </div>
+          </div>
+
+          {/* Bảng tổng hợp */}
+          <div className="overflow-x-auto rounded-2xl border border-gray-200 dark:border-gray-700">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400 text-xs uppercase">
+                <tr>
+                  <th className="px-4 py-3 text-left">#</th>
+                  <th className="px-4 py-3 text-left">Họ tên</th>
+                  <th className="px-4 py-3 text-left">MSSV</th>
+                  <th className="px-4 py-3 text-center text-green-600">Có mặt</th>
+                  <th className="px-4 py-3 text-center text-yellow-600">Muộn</th>
+                  <th className="px-4 py-3 text-center text-red-600">Vắng</th>
+                  <th className="px-4 py-3 text-center">Tổng</th>
+                  <th className="px-4 py-3 text-center">Tỉ lệ</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y dark:divide-gray-700">
+                {report.studentList.map((s, i) => {
+                  const rColor = s.rate >= 80 ? 'text-green-600' : s.rate >= 60 ? 'text-yellow-600' : 'text-red-600';
+                  const bg = s.rate < 60 ? 'bg-red-50 dark:bg-red-900/10' : '';
+                  return (
+                    <tr key={s.uid} className={`hover:bg-gray-50 dark:hover:bg-gray-700/50 ${bg}`}>
+                      <td className="px-4 py-3 text-gray-400">{i + 1}</td>
+                      <td className="px-4 py-3 font-medium text-gray-800 dark:text-white">{s.name}</td>
+                      <td className="px-4 py-3 text-gray-500">{s.mssv}</td>
+                      <td className="px-4 py-3 text-center font-semibold text-green-600">{s.present}</td>
+                      <td className="px-4 py-3 text-center font-semibold text-yellow-600">{s.late}</td>
+                      <td className="px-4 py-3 text-center font-semibold text-red-600">{s.absent}</td>
+                      <td className="px-4 py-3 text-center text-gray-600 dark:text-gray-300">{s.total}</td>
+                      <td className="px-4 py-3 text-center">
+                        <span className={`font-bold ${rColor}`}>{s.rate}%</span>
+                        <div className="w-12 mx-auto mt-1 bg-gray-200 dark:bg-gray-600 rounded-full h-1.5">
+                          <div className={`h-1.5 rounded-full ${s.rate >= 80 ? 'bg-green-400' : s.rate >= 60 ? 'bg-yellow-400' : 'bg-red-400'}`}
+                            style={{ width: `${s.rate}%` }}/>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -573,6 +778,7 @@ export default function TeacherDashboard({ user, onLogout, onUpdateUser }) {
               { key: 'stats', label: 'Thống kê' },
               { key: 'bulk', label: 'Bulk Upload' },
               { key: 'leave', label: 'Nghỉ phép' },
+              { key: 'report', label: 'Báo cáo' },
             ].map(({ key, label }) => (
               <button
                 key={key}
@@ -757,6 +963,11 @@ export default function TeacherDashboard({ user, onLogout, onUpdateUser }) {
           {/* Stats tab */}
           {activeTab === 'stats' && (
             <StatsTab classId={selectedClass} stats={stats} pct={pct} />
+          )}
+
+          {/* Report tab */}
+          {activeTab === 'report' && (
+            <ReportTab classId={selectedClass} />
           )}
         </div>
       </div>

@@ -342,6 +342,62 @@ const qrCheckin = async (req, res) => {
   }
 };
 
+// Báo cáo tổng hợp theo khoảng ngày
+const getRangeReport = async (req, res) => {
+  try {
+    const { classId } = req.params;
+    const { from, to } = req.query;
+    if (!from || !to) return res.status(400).json({ success: false, message: 'Thiếu from/to' });
+
+    // Tạo mảng ngày từ from đến to
+    const dates = [];
+    const cur = new Date(from + 'T00:00:00Z');
+    const end = new Date(to + 'T00:00:00Z');
+    while (cur <= end) {
+      dates.push(cur.toISOString().slice(0, 10));
+      cur.setUTCDate(cur.getUTCDate() + 1);
+    }
+    if (dates.length > 62) return res.status(400).json({ success: false, message: 'Tối đa 62 ngày' });
+
+    // Danh sách sinh viên
+    const studentsSnap = await db.ref('users').orderByChild('classId').equalTo(classId).once('value');
+    const students = {};
+    studentsSnap.forEach((c) => {
+      if (c.val().role === 'student') {
+        students[c.key] = { name: c.val().name, mssv: c.val().mssv, present: 0, late: 0, absent: 0, total: 0, days: {} };
+      }
+    });
+
+    // Tổng hợp điểm danh theo từng ngày
+    const dailySummary = [];
+    for (const date of dates) {
+      const snap = await db.ref(`attendance/${classId}_${date}`).once('value');
+      const data = snap.val() || {};
+      let dp = 0, dl = 0, da = 0;
+      for (const uid of Object.keys(students)) {
+        students[uid].total++;
+        const r = data[uid];
+        const st = r?.status || 'absent';
+        students[uid].days[date] = st;
+        if (st === 'present') { students[uid].present++; dp++; }
+        else if (st === 'late') { students[uid].late++; dl++; }
+        else { students[uid].absent++; da++; }
+      }
+      dailySummary.push({ date, present: dp, late: dl, absent: da, total: Object.keys(students).length });
+    }
+
+    const studentList = Object.entries(students).map(([uid, s]) => ({
+      uid, ...s,
+      rate: s.total > 0 ? Math.round(((s.present + s.late) / s.total) * 100) : 0,
+    })).sort((a, b) => a.rate - b.rate);
+
+    res.json({ success: true, classId, from, to, dates, studentList, dailySummary });
+  } catch (err) {
+    console.error('getRangeReport error:', err);
+    res.status(500).json({ success: false, message: 'Lỗi server' });
+  }
+};
+
 // Thống kê theo tuần: trả về 7 ngày gần nhất với số liệu mỗi ngày
 const getWeeklyStats = async (req, res) => {
   try {
@@ -412,4 +468,4 @@ const getWeeklyStats = async (req, res) => {
   }
 };
 
-module.exports = { checkin, getHistory, getClassAttendance, updateAttendance, deleteAttendance, getLeaderboard, getAbsenceAlerts, manualCheckin, qrCheckin, getWeeklyStats };
+module.exports = { checkin, getHistory, getClassAttendance, updateAttendance, deleteAttendance, getLeaderboard, getAbsenceAlerts, manualCheckin, qrCheckin, getWeeklyStats, getRangeReport };
