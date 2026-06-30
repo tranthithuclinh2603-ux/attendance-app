@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LogOut, RefreshCw, Users, BookOpen, TrendingUp, BarChart2, UserPlus, GraduationCap, Shield, UserCheck } from 'lucide-react';
+import { LogOut, RefreshCw, Users, BookOpen, TrendingUp, BarChart2, UserPlus, GraduationCap, Shield, UserCheck, Activity, Clock, Smartphone, QrCode, Edit3 } from 'lucide-react';
 import { adminAPI } from '../services/api';
 
 const ROLE_LABEL = { student: 'Sinh viên', teacher: 'Giảng viên', parent: 'Phụ huynh', admin: 'Admin' };
@@ -143,6 +143,130 @@ function UserStatsTab() {
   );
 }
 
+function UsageStatsTab() {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    adminAPI.getUsageStats()
+      .then(res => setData(res.data))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return <div className="py-16 flex justify-center"><div className="w-8 h-8 border-4 border-blue-400 border-t-transparent rounded-full animate-spin"/></div>;
+  if (!data) return <div className="py-10 text-center text-gray-400">Không thể tải dữ liệu</div>;
+
+  const maxLogin = Math.max(...data.dailyLogins.map(d => d.count), 1);
+  const maxHour = Math.max(...data.hourlyLogins, 1);
+  const totalMethod = Object.values(data.methodCount).reduce((a, b) => a + b, 0) || 1;
+
+  const DAY_VI = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+
+  return (
+    <div className="p-5 space-y-5">
+      {/* Thẻ tổng quan */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        {[
+          { label: 'Tổng đăng nhập (7 ngày)', value: data.totalLogins, Icon: Activity, color: 'blue' },
+          { label: 'Hoạt động hôm nay', value: data.activeToday, Icon: Users, color: 'green' },
+          { label: 'Giờ cao điểm', value: `${data.peakHour}:00`, Icon: Clock, color: 'orange' },
+        ].map(({ label, value, Icon, color }) => (
+          <div key={label} className={`bg-${color}-50 dark:bg-${color}-900/20 rounded-2xl p-4`}>
+            <Icon size={18} className={`text-${color}-500 mb-2`} />
+            <p className={`text-2xl font-bold text-${color}-600 dark:text-${color}-400`}>{value}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{label}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Đăng nhập 7 ngày */}
+      <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl p-4">
+        <p className="text-sm font-semibold text-gray-700 dark:text-white mb-3 flex items-center gap-2">
+          <Activity size={16} className="text-blue-500"/> Lượt đăng nhập 7 ngày qua
+        </p>
+        <div className="flex items-end gap-2 h-24">
+          {data.dailyLogins.map((d, i) => {
+            const h = (d.count / maxLogin) * 88;
+            const dayName = DAY_VI[new Date(d.date + 'T00:00:00').getDay()];
+            return (
+              <div key={i} className="flex-1 flex flex-col items-center gap-1 group relative">
+                <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 hidden group-hover:block z-10 bg-gray-800 text-white text-xs rounded px-2 py-1 whitespace-nowrap">
+                  {d.date.slice(5)}: {d.count} lượt
+                </div>
+                <div className="w-full flex flex-col justify-end" style={{ height: 88 }}>
+                  <div className="w-full bg-blue-400 dark:bg-blue-500 rounded-t-sm" style={{ height: Math.max(h, d.count > 0 ? 4 : 0) }} />
+                </div>
+                <span className="text-[10px] text-gray-400">{dayName}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Giờ cao điểm trong ngày */}
+      <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl p-4">
+        <p className="text-sm font-semibold text-gray-700 dark:text-white mb-3 flex items-center gap-2">
+          <Clock size={16} className="text-orange-500"/> Phân bố giờ đăng nhập (7 ngày)
+        </p>
+        <div className="flex items-end gap-px h-16">
+          {data.hourlyLogins.map((count, h) => {
+            const barH = (count / maxHour) * 60;
+            const isPeak = h === data.peakHour;
+            return (
+              <div key={h} className="flex-1 flex flex-col items-center group relative" style={{ height: 64 }}>
+                {count > 0 && (
+                  <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 hidden group-hover:block z-10 bg-gray-800 text-white text-xs rounded px-1.5 py-0.5 whitespace-nowrap">
+                    {h}h: {count}
+                  </div>
+                )}
+                <div className="w-full flex flex-col justify-end" style={{ height: 60 }}>
+                  <div className={`w-full rounded-t-sm ${isPeak ? 'bg-orange-400' : 'bg-blue-300 dark:bg-blue-600'}`}
+                    style={{ height: Math.max(barH, count > 0 ? 3 : 0) }} />
+                </div>
+                {(h % 6 === 0) && <span className="text-[9px] text-gray-400">{h}h</span>}
+              </div>
+            );
+          })}
+        </div>
+        <p className="text-xs text-gray-400 mt-1">
+          Giờ cao điểm: <span className="text-orange-500 font-semibold">{data.peakHour}:00 – {data.peakHour + 1}:00</span>
+        </p>
+      </div>
+
+      {/* Loại điểm danh */}
+      <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl p-4">
+        <p className="text-sm font-semibold text-gray-700 dark:text-white mb-3 flex items-center gap-2">
+          <Smartphone size={16} className="text-indigo-500"/> Phương thức điểm danh (7 ngày)
+        </p>
+        <div className="space-y-3">
+          {[
+            { key: 'face', label: 'Nhận diện khuôn mặt', Icon: Smartphone, color: 'indigo' },
+            { key: 'qr', label: 'Quét mã QR', Icon: QrCode, color: 'blue' },
+            { key: 'manual', label: 'Thủ công (GV)', Icon: Edit3, color: 'gray' },
+          ].map(({ key, label, Icon, color }) => {
+            const val = data.methodCount[key] || 0;
+            const pct = Math.round((val / totalMethod) * 100);
+            return (
+              <div key={key}>
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-sm text-gray-600 dark:text-gray-300 flex items-center gap-1.5">
+                    <Icon size={14} className={`text-${color}-500`}/> {label}
+                  </span>
+                  <span className={`text-sm font-bold text-${color}-600 dark:text-${color}-400`}>{val} ({pct}%)</span>
+                </div>
+                <div className="bg-gray-100 dark:bg-gray-700 rounded-full h-2.5">
+                  <div className={`bg-${color}-400 h-2.5 rounded-full transition-all`} style={{ width: `${pct}%` }}/>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminDashboard({ user, onLogout }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -210,6 +334,7 @@ export default function AdminDashboard({ user, onLogout }) {
                   { key: 'overview', label: 'Theo lớp' },
                   { key: 'daily', label: '7 ngày qua' },
                   { key: 'users', label: 'Người dùng' },
+                  { key: 'usage', label: 'Tần suất' },
                 ].map(({ key, label }) => (
                   <button
                     key={key}
@@ -300,6 +425,9 @@ export default function AdminDashboard({ user, onLogout }) {
 
               {/* Tab người dùng */}
               {tab === 'users' && <UserStatsTab />}
+
+              {/* Tab tần suất */}
+              {tab === 'usage' && <UsageStatsTab />}
             </div>
           </>
         )}

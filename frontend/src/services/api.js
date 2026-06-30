@@ -67,6 +67,7 @@ export const adminAPI = {
   getStats: () => API.get('/admin/stats'),
   getUsers: () => API.get('/admin/users'),
   getUserStats: () => API.get('/admin/user-stats'),
+  getUsageStats: () => API.get('/admin/usage-stats'),
 };
 
 // Parent

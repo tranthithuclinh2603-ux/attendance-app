@@ -93,6 +93,17 @@ const login = async (req, res) => {
       { expiresIn: '24h' }
     );
 
+    // Log lần đăng nhập
+    const vnNow = new Date(Date.now() + 7 * 3600 * 1000);
+    const dateKey = vnNow.toISOString().slice(0, 10);
+    const hour = vnNow.getUTCHours();
+    db.ref(`logs/logins/${dateKey}/${uid}`).set({
+      name: userData.name,
+      role: userData.role,
+      hour,
+      timestamp: new Date().toISOString(),
+    });
+
     res.json({
       success: true,
       token,

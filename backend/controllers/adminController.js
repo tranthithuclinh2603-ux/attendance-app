@@ -158,4 +158,71 @@ const getUserStats = async (req, res) => {
   }
 };
 
-module.exports = { getSchoolStats, getAllUsers, getUserStats };
+// Tần suất sử dụng: đăng nhập 7 ngày, giờ cao điểm, loại điểm danh
+const getUsageStats = async (req, res) => {
+  try {
+    const today = new Date();
+    const vnToday = new Date(today.getTime() + 7 * 3600 * 1000);
+
+    // 7 ngày gần nhất
+    const dates = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(vnToday);
+      d.setUTCDate(d.getUTCDate() - i);
+      dates.push(d.toISOString().slice(0, 10));
+    }
+
+    // Đăng nhập theo ngày
+    const dailyLogins = [];
+    const hourCount = Array(24).fill(0);
+    let totalLogins = 0;
+
+    for (const date of dates) {
+      const snap = await db.ref(`logs/logins/${date}`).once('value');
+      const count = snap.numChildren();
+      totalLogins += count;
+      dailyLogins.push({ date, count });
+
+      snap.forEach((c) => {
+        const h = c.val().hour;
+        if (h >= 0 && h < 24) hourCount[h]++;
+      });
+    }
+
+    // Loại điểm danh từ attendance records (7 ngày)
+    const methodCount = { face: 0, qr: 0, manual: 0 };
+    for (const date of dates) {
+      const attSnap = await db.ref('attendance').once('value');
+      attSnap.forEach((node) => {
+        if (!node.key.includes(date)) return;
+        node.forEach((rec) => {
+          const method = rec.val().method || 'face';
+          if (methodCount[method] !== undefined) methodCount[method]++;
+          else methodCount.face++;
+        });
+      });
+    }
+
+    // Người dùng hoạt động hôm nay
+    const todaySnap = await db.ref(`logs/logins/${dates[dates.length - 1]}`).once('value');
+    const activeToday = todaySnap.numChildren();
+
+    // Giờ cao điểm
+    const peakHour = hourCount.indexOf(Math.max(...hourCount));
+
+    res.json({
+      success: true,
+      totalLogins,
+      activeToday,
+      peakHour,
+      dailyLogins,
+      hourlyLogins: hourCount,
+      methodCount,
+    });
+  } catch (err) {
+    console.error('getUsageStats error:', err);
+    res.status(500).json({ success: false, message: 'Lỗi server' });
+  }
+};
+
+module.exports = { getSchoolStats, getAllUsers, getUserStats, getUsageStats };
