@@ -1,6 +1,147 @@
 import React, { useState, useEffect } from 'react';
-import { LogOut, RefreshCw, Users, BookOpen, TrendingDown, BarChart2 } from 'lucide-react';
+import { LogOut, RefreshCw, Users, BookOpen, TrendingUp, BarChart2, UserPlus, GraduationCap, Shield, UserCheck } from 'lucide-react';
 import { adminAPI } from '../services/api';
+
+const ROLE_LABEL = { student: 'Sinh viên', teacher: 'Giảng viên', parent: 'Phụ huynh', admin: 'Admin' };
+const ROLE_COLOR = { student: 'blue', teacher: 'green', parent: 'purple', admin: 'red' };
+
+function MonthlyBarChart({ data }) {
+  if (!data?.length) return null;
+  const maxVal = Math.max(...data.map(d => d.students + d.teachers + d.parents), 1);
+  return (
+    <div className="flex items-end gap-2 h-32 mt-2">
+      {data.map((d, i) => {
+        const total = d.students + d.teachers + d.parents;
+        const sH = (d.students / maxVal) * 120;
+        const tH = (d.teachers / maxVal) * 120;
+        const pH = (d.parents / maxVal) * 120;
+        return (
+          <div key={i} className="flex-1 flex flex-col items-center gap-1 group relative">
+            <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 hidden group-hover:block z-10 bg-gray-800 text-white text-xs rounded-lg px-2 py-1.5 whitespace-nowrap shadow-lg">
+              <p className="font-medium">{d.label}</p>
+              <p className="text-blue-300">SV: {d.students}</p>
+              <p className="text-green-300">GV: {d.teachers}</p>
+              {d.parents > 0 && <p className="text-purple-300">PH: {d.parents}</p>}
+              <p className="text-white font-semibold">Tổng: {total}</p>
+            </div>
+            <div className="w-full flex flex-col justify-end" style={{ height: 120 }}>
+              {pH > 0 && <div className="w-full bg-purple-400 dark:bg-purple-500" style={{ height: pH }} />}
+              {tH > 0 && <div className="w-full bg-green-400 dark:bg-green-500" style={{ height: tH }} />}
+              <div className="w-full bg-blue-400 dark:bg-blue-500 rounded-t-sm" style={{ height: Math.max(sH, 2) }} />
+            </div>
+            <span className="text-[10px] text-gray-400">{d.label.split('/')[0]}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function UserStatsTab() {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    adminAPI.getUserStats()
+      .then(res => setData(res.data))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return <div className="py-16 flex justify-center"><div className="w-8 h-8 border-4 border-blue-400 border-t-transparent rounded-full animate-spin"/></div>;
+  if (!data) return <div className="py-10 text-center text-gray-400">Không thể tải dữ liệu</div>;
+
+  const total = Object.values(data.roleCount).reduce((a, b) => a + b, 0);
+  const thisMonth = data.monthlyGrowth[data.monthlyGrowth.length - 1];
+  const lastMonth = data.monthlyGrowth[data.monthlyGrowth.length - 2];
+  const thisMonthTotal = (thisMonth?.students || 0) + (thisMonth?.teachers || 0) + (thisMonth?.parents || 0);
+  const lastMonthTotal = (lastMonth?.students || 0) + (lastMonth?.teachers || 0) + (lastMonth?.parents || 0);
+  const growth = lastMonthTotal > 0 ? Math.round(((thisMonthTotal - lastMonthTotal) / lastMonthTotal) * 100) : 0;
+
+  return (
+    <div className="p-5 space-y-5">
+      {/* Thẻ tổng quan vai trò */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {[
+          { role: 'student', label: 'Sinh viên', Icon: GraduationCap },
+          { role: 'teacher', label: 'Giảng viên', Icon: BookOpen },
+          { role: 'parent', label: 'Phụ huynh', Icon: UserCheck },
+          { role: 'admin', label: 'Admin', Icon: Shield },
+        ].map(({ role, label, Icon }) => {
+          const count = data.roleCount[role] || 0;
+          const color = ROLE_COLOR[role];
+          const pct = total ? Math.round((count / total) * 100) : 0;
+          return (
+            <div key={role} className={`bg-${color}-50 dark:bg-${color}-900/20 rounded-2xl p-4`}>
+              <Icon size={18} className={`text-${color}-500 mb-2`} />
+              <p className={`text-2xl font-bold text-${color}-600 dark:text-${color}-400`}>{count}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{label}</p>
+              <div className={`mt-2 h-1.5 rounded-full bg-${color}-100 dark:bg-${color}-900/40`}>
+                <div className={`h-1.5 rounded-full bg-${color}-400`} style={{ width: `${pct}%` }} />
+              </div>
+              <p className={`text-[11px] text-${color}-500 mt-0.5`}>{pct}% tổng</p>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Biểu đồ tăng trưởng */}
+      <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl p-4">
+        <div className="flex items-center justify-between mb-1">
+          <p className="text-sm font-semibold text-gray-700 dark:text-white flex items-center gap-2">
+            <TrendingUp size={16} className="text-blue-500"/> Tăng trưởng tài khoản (6 tháng)
+          </p>
+          <div className="flex items-center gap-1.5">
+            <span className="text-sm font-bold text-gray-700 dark:text-white">{thisMonthTotal} tháng này</span>
+            {growth !== 0 && (
+              <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${growth > 0 ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
+                {growth > 0 ? '+' : ''}{growth}%
+              </span>
+            )}
+          </div>
+        </div>
+        <div className="flex gap-3 text-xs text-gray-400 mb-1">
+          <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-blue-400 inline-block"/>SV</span>
+          <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-green-400 inline-block"/>GV</span>
+          <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-purple-400 inline-block"/>PH</span>
+        </div>
+        <MonthlyBarChart data={data.monthlyGrowth} />
+      </div>
+
+      {/* Tài khoản mới nhất */}
+      <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl overflow-hidden">
+        <div className="px-4 py-3 border-b dark:border-gray-700 flex items-center gap-2">
+          <UserPlus size={16} className="text-indigo-500"/>
+          <p className="text-sm font-semibold text-gray-700 dark:text-white">Tài khoản đăng ký gần nhất</p>
+        </div>
+        <div className="divide-y dark:divide-gray-700">
+          {data.recentUsers.slice(0, 10).map((u, i) => {
+            const color = ROLE_COLOR[u.role] || 'gray';
+            const date = u.createdAt ? new Date(u.createdAt).toLocaleDateString('vi-VN') : '—';
+            return (
+              <div key={i} className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                <div className={`w-9 h-9 rounded-xl bg-${color}-100 dark:bg-${color}-900/30 flex items-center justify-center shrink-0`}>
+                  <span className={`text-sm font-bold text-${color}-600`}>{u.name?.charAt(0)?.toUpperCase() || '?'}</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-800 dark:text-white truncate">{u.name}</p>
+                  <p className="text-xs text-gray-400 truncate">{u.email}</p>
+                </div>
+                <div className="text-right shrink-0 space-y-0.5">
+                  <span className={`inline-block text-xs px-2 py-0.5 rounded-full bg-${color}-100 dark:bg-${color}-900/30 text-${color}-600 dark:text-${color}-400 font-medium`}>
+                    {ROLE_LABEL[u.role] || u.role}
+                  </span>
+                  {u.classId && <p className="text-[11px] text-gray-400">{u.classId}</p>}
+                </div>
+                <p className="text-[11px] text-gray-400 shrink-0 w-20 text-right">{date}</p>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function AdminDashboard({ user, onLogout }) {
   const [data, setData] = useState(null);
@@ -49,12 +190,13 @@ export default function AdminDashboard({ user, onLogout }) {
             {/* Tổng quan */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               {[
-                { label: 'Sinh viên', value: data.stats.totalStudents },
-                { label: 'Giảng viên', value: data.stats.totalTeachers },
-                { label: 'Lớp học', value: data.stats.totalClasses },
-                { label: 'Lượt điểm danh', value: data.stats.totalAttendance },
-              ].map(({ label, value }) => (
+                { label: 'Sinh viên', value: data.stats.totalStudents, Icon: GraduationCap, color: 'blue' },
+                { label: 'Giảng viên', value: data.stats.totalTeachers, Icon: BookOpen, color: 'green' },
+                { label: 'Lớp học', value: data.stats.totalClasses, Icon: BarChart2, color: 'purple' },
+                { label: 'Lượt điểm danh', value: data.stats.totalAttendance, Icon: Users, color: 'orange' },
+              ].map(({ label, value, Icon, color }) => (
                 <div key={label} className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm text-center">
+                  <Icon size={20} className={`text-${color}-500 mx-auto mb-2`} />
                   <p className="text-2xl font-bold text-gray-800 dark:text-white">{value}</p>
                   <p className="text-gray-500 dark:text-gray-400 text-sm">{label}</p>
                 </div>
@@ -67,6 +209,7 @@ export default function AdminDashboard({ user, onLogout }) {
                 {[
                   { key: 'overview', label: 'Theo lớp' },
                   { key: 'daily', label: '7 ngày qua' },
+                  { key: 'users', label: 'Người dùng' },
                 ].map(({ key, label }) => (
                   <button
                     key={key}
@@ -100,11 +243,10 @@ export default function AdminDashboard({ user, onLogout }) {
                           {c.absenceRate}% vắng
                         </span>
                       </div>
-                      {/* Bar */}
                       <div className="flex gap-1 h-3 rounded-full overflow-hidden">
-                        <div className="bg-green-400" style={{ width: `${c.total ? Math.round((c.present / c.total) * 100) : 0}%` }} title="Có mặt" />
-                        <div className="bg-yellow-400" style={{ width: `${c.total ? Math.round((c.late / c.total) * 100) : 0}%` }} title="Muộn" />
-                        <div className="bg-red-400" style={{ width: `${c.total ? Math.round((c.absent / c.total) * 100) : 0}%` }} title="Vắng" />
+                        <div className="bg-green-400" style={{ width: `${c.total ? Math.round((c.present / c.total) * 100) : 0}%` }} />
+                        <div className="bg-yellow-400" style={{ width: `${c.total ? Math.round((c.late / c.total) * 100) : 0}%` }} />
+                        <div className="bg-red-400" style={{ width: `${c.total ? Math.round((c.absent / c.total) * 100) : 0}%` }} />
                       </div>
                       <div className="flex gap-4 mt-1.5 text-xs text-gray-500 dark:text-gray-400">
                         <span className="flex items-center gap-1"><span className="w-2 h-2 bg-green-400 rounded-full inline-block"/> Có mặt: {c.present}</span>
@@ -155,6 +297,9 @@ export default function AdminDashboard({ user, onLogout }) {
                   </div>
                 </div>
               )}
+
+              {/* Tab người dùng */}
+              {tab === 'users' && <UserStatsTab />}
             </div>
           </>
         )}

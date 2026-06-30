@@ -66,6 +66,7 @@ export const biometricAPI = {
 export const adminAPI = {
   getStats: () => API.get('/admin/stats'),
   getUsers: () => API.get('/admin/users'),
+  getUserStats: () => API.get('/admin/user-stats'),
 };
 
 // Parent

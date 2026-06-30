@@ -95,4 +95,67 @@ const getAllUsers = async (req, res) => {
   }
 };
 
-module.exports = { getSchoolStats, getAllUsers };
+// Thống kê người dùng: tăng trưởng tài khoản theo tháng
+const getUserStats = async (req, res) => {
+  try {
+    const snap = await db.ref('users').once('value');
+    const now = new Date();
+
+    // Tạo 6 tháng gần nhất
+    const months = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      months.push({
+        key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`,
+        label: `T${d.getMonth() + 1}/${d.getFullYear()}`,
+        students: 0,
+        teachers: 0,
+        parents: 0,
+      });
+    }
+
+    const roleCount = { student: 0, teacher: 0, parent: 0, admin: 0 };
+    const recentUsers = [];
+
+    snap.forEach((c) => {
+      const u = c.val();
+      if (u.role) roleCount[u.role] = (roleCount[u.role] || 0) + 1;
+
+      // Tháng đăng ký
+      if (u.createdAt) {
+        const d = new Date(u.createdAt);
+        const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        const m = months.find(m => m.key === monthKey);
+        if (m) {
+          if (u.role === 'student') m.students++;
+          else if (u.role === 'teacher') m.teachers++;
+          else if (u.role === 'parent') m.parents++;
+        }
+      }
+
+      // Danh sách người dùng mới nhất (20 gần nhất)
+      recentUsers.push({
+        name: u.name,
+        email: u.email,
+        role: u.role,
+        classId: u.classId,
+        mssv: u.mssv,
+        createdAt: u.createdAt,
+      });
+    });
+
+    recentUsers.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+
+    res.json({
+      success: true,
+      roleCount,
+      monthlyGrowth: months,
+      recentUsers: recentUsers.slice(0, 20),
+    });
+  } catch (err) {
+    console.error('getUserStats error:', err);
+    res.status(500).json({ success: false, message: 'Lỗi server' });
+  }
+};
+
+module.exports = { getSchoolStats, getAllUsers, getUserStats };
