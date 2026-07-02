@@ -7,6 +7,7 @@ import StudentPage from './pages/StudentPage';
 import TeacherPage from './pages/TeacherPage';
 import QRCheckinPage from './pages/QRCheckinPage';
 import AdminDashboard from './components/AdminDashboard';
+import LandingPage from './pages/LandingPage';
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -70,7 +71,7 @@ export default function App() {
         <Route path="/teacher" element={<TeacherPage user={user} onLogout={handleLogout} onUpdateUser={handleUpdateUser} />} />
         <Route path="/admin" element={<AdminDashboard user={user} onLogout={handleLogout} />} />
         <Route path="/qr" element={<QRCheckinPage />} />
-        <Route path="/" element={<Navigate to={defaultRoute()} />} />
+        <Route path="/" element={user ? <Navigate to={defaultRoute()} /> : <LandingPage />} />
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </BrowserRouter>
