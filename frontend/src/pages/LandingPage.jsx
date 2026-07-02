@@ -169,10 +169,9 @@ function HeroDashboard() {
         </div>
       </div>
 
-      {/* Floating AI badge */}
-      <div className="absolute -top-3 -right-3 bg-white rounded-2xl shadow-xl px-3 py-2 border border-blue-100 flex items-center gap-2"
-        style={{ backdropFilter: 'blur(10px)' }}>
-        <div className="w-6 h-6 bg-gradient-to-br from-blue-600 to-sky-500 rounded-lg flex items-center justify-center">
+      {/* Floating AI badge — bottom right */}
+      <div className="absolute -bottom-3 -right-3 bg-white rounded-2xl shadow-xl px-3 py-2 border border-blue-100 flex items-center gap-2">
+        <div className="w-6 h-6 bg-gradient-to-br from-blue-600 to-sky-500 rounded-lg flex items-center justify-center flex-shrink-0">
           <Cpu size={12} className="text-white" />
         </div>
         <div>
@@ -181,8 +180,8 @@ function HeroDashboard() {
         </div>
       </div>
 
-      {/* Floating online badge */}
-      <div className="absolute -bottom-3 -left-3 bg-white rounded-2xl shadow-xl px-3 py-2 border border-green-100 flex items-center gap-2">
+      {/* Floating online badge — bottom left */}
+      <div className="absolute -bottom-10 -left-2 sm:-left-3 bg-white rounded-2xl shadow-xl px-3 py-2 border border-green-100 flex items-center gap-2">
         <span className="relative flex h-2.5 w-2.5">
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
           <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500" />
@@ -359,8 +358,8 @@ export default function LandingPage() {
 
         <div className="relative max-w-md mx-auto md:max-w-6xl">
 
-          {/* ── Text block (compact) ── */}
-          <div className="text-center mb-6 md:hidden">
+          {/* ── Text block (mobile compact) ── */}
+          <div className="text-center mb-5 md:hidden">
             {/* Badge */}
             <div className="anim-fadeUp inline-flex items-center gap-1.5 bg-blue-100 text-[#2563EB] text-xs font-semibold px-3 py-1.5 rounded-full mb-3">
               <span className="w-1.5 h-1.5 bg-[#2563EB] rounded-full animate-pulse" />
@@ -368,29 +367,19 @@ export default function LandingPage() {
             </div>
 
             {/* Title */}
-            <h1 className="anim-fadeUp1 text-[2rem] leading-tight font-extrabold text-[#111827] mb-2">
+            <h1 className="anim-fadeUp1 text-[2.1rem] leading-tight font-extrabold text-[#111827] mb-2">
               Điểm danh{' '}
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#2563EB] to-[#60A5FA]">AI</span>
               <br />chỉ trong{' '}
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#3B82F6] to-[#2563EB]">2 giây</span>
             </h1>
 
-            {/* Subtitle compact */}
-            <p className="anim-fadeUp2 text-[#6B7280] text-sm mb-3 leading-relaxed">
-              Giải pháp điểm danh dành cho<br />
-              <strong className="text-[#111827]">Trường Cao đẳng Kinh tế Đối ngoại.</strong>
+            {/* Subtitle — 1 line only */}
+            <p className="anim-fadeUp2 text-[#6B7280] text-sm mb-4 leading-relaxed">
+              Dành cho <strong className="text-[#111827]">Trường Cao đẳng Kinh tế Đối ngoại</strong>
             </p>
 
-            {/* Bullet list compact */}
-            <div className="anim-fadeUp2 grid grid-cols-2 gap-x-3 gap-y-1 mb-4 text-left max-w-xs mx-auto">
-              {['Nhận diện khuôn mặt AI','Quét mã QR','Dashboard Realtime','Xuất Excel & PDF'].map(t => (
-                <div key={t} className="flex items-center gap-1.5 text-xs text-[#6B7280]">
-                  <CheckCircle size={12} className="text-[#2563EB] flex-shrink-0" /> {t}
-                </div>
-              ))}
-            </div>
-
-            {/* CTAs */}
+            {/* CTAs — primary full, secondary text link */}
             <div className="anim-fadeUp3 flex flex-col gap-2 max-w-xs mx-auto">
               <button onClick={() => navigate('/register')}
                 className="w-full flex items-center justify-center gap-2 font-semibold text-white text-sm py-3.5 rounded-[18px] transition-all active:scale-95"
@@ -398,8 +387,8 @@ export default function LandingPage() {
                 Đăng ký miễn phí <ArrowRight size={15} />
               </button>
               <button onClick={() => { document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' }); }}
-                className="w-full flex items-center justify-center gap-2 font-semibold text-[#2563EB] text-sm py-3 rounded-[18px] border-2 border-[#2563EB]/20 bg-white hover:bg-blue-50 transition-all active:scale-95">
-                Xem tính năng
+                className="w-full text-[#2563EB] text-sm font-medium py-2 active:opacity-70">
+                Xem tính năng ↓
               </button>
             </div>
           </div>
