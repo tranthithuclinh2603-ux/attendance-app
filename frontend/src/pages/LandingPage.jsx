@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Camera, QrCode, BarChart2, FileSpreadsheet, Shield, Bot,
+  Camera, QrCode, BarChart2, FileSpreadsheet, Shield,
   CheckCircle, ChevronDown, ChevronUp, ArrowRight, Users,
   Star, Menu, X, Zap, BookOpen, GraduationCap, Settings,
-  Activity, Clock, TrendingUp, Cpu,
+  Activity, Clock, TrendingUp, UserCheck,
 } from 'lucide-react';
 
 /* ─── CSS animations (injected once) ─── */
@@ -34,17 +34,10 @@ const STYLE = `
 }
 `;
 
-/* ─── Logo SVG: học sinh dơ tay ─── */
+/* ─── Logo Icon ─── */
 function LogoIcon({ size = 32 }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="28" cy="14" r="9" fill="#BFDBFE" stroke="#2563EB" strokeWidth="2.5" />
-      <path d="M14 52 C14 38 42 38 42 52" fill="#BFDBFE" stroke="#2563EB" strokeWidth="2.5" strokeLinejoin="round" />
-      <path d="M38 36 L52 16" stroke="#2563EB" strokeWidth="3" strokeLinecap="round" />
-      <circle cx="53" cy="14" r="3.5" fill="#2563EB" />
-      <path d="M18 40 L12 50" stroke="#2563EB" strokeWidth="2.5" strokeLinecap="round" />
-    </svg>
-  );
+  const s = Math.round(size * 0.6);
+  return <Users size={s} className="text-white" />;
 }
 
 /* ─── Premium Dashboard Mockup ─── */
@@ -85,8 +78,8 @@ function HeroDashboard() {
                 <Camera size={14} className="text-white" />
               </div>
               <div>
-                <div className="text-[10px] text-gray-500">Khuôn mặt AI</div>
-                <div className="text-xs font-bold text-blue-700">99% chính xác</div>
+                <div className="text-[10px] text-gray-500">Khuôn mặt</div>
+                <div className="text-xs font-bold text-blue-700">Chính xác cao</div>
               </div>
             </div>
             <div className="bg-gradient-to-br from-sky-50 to-sky-100/50 rounded-[16px] p-2.5 flex items-center gap-2 border border-sky-100">
@@ -169,14 +162,14 @@ function HeroDashboard() {
         </div>
       </div>
 
-      {/* Floating AI badge — bottom right */}
+      {/* Floating check badge — bottom right */}
       <div className="absolute -bottom-3 -right-3 bg-white rounded-2xl shadow-xl px-3 py-2 border border-blue-100 flex items-center gap-2">
         <div className="w-6 h-6 bg-gradient-to-br from-blue-600 to-sky-500 rounded-lg flex items-center justify-center flex-shrink-0">
-          <Cpu size={12} className="text-white" />
+          <UserCheck size={12} className="text-white" />
         </div>
         <div>
-          <div className="text-[9px] text-gray-400 leading-none">AI nhận diện</div>
-          <div className="text-[11px] font-bold text-gray-800 leading-tight">~2 giây</div>
+          <div className="text-[9px] text-gray-400 leading-none">Nhận diện</div>
+          <div className="text-[11px] font-bold text-gray-800 leading-tight">Nhanh chóng</div>
         </div>
       </div>
 
@@ -247,18 +240,18 @@ function FAQ({ q, a }) {
 
 /* ─── Data ─── */
 const features = [
-  { icon: Camera, title: 'Nhận diện khuôn mặt', desc: 'AI nhận diện tức thì, độ chính xác 99%, không cần chạm tay.' },
+  { icon: Camera, title: 'Nhận diện khuôn mặt', desc: 'Nhận diện khuôn mặt chính xác cao, không cần chạm tay, hoạt động ngay trên trình duyệt.' },
   { icon: QrCode, title: 'Quét mã QR', desc: 'Tạo QR theo buổi học, sinh viên quét là hoàn thành ngay lập tức.' },
   { icon: BarChart2, title: 'Thống kê realtime', desc: 'Theo dõi chuyên cần và cảnh báo vắng mặt tự động.' },
   { icon: FileSpreadsheet, title: 'Xuất báo cáo', desc: 'Xuất Excel 2 sheet và PDF chuyên nghiệp theo khoảng thời gian.' },
-  { icon: Shield, title: 'Bảo mật cao', desc: 'JWT, WebAuthn, mã hóa — thông tin luôn được bảo vệ.' },
-  { icon: Bot, title: 'Trợ lý AI 24/7', desc: 'Chatbox AI hỗ trợ giải đáp và hướng dẫn bất kỳ lúc nào.' },
+  { icon: Shield, title: 'Bảo mật cao', desc: 'JWT, mã hóa dữ liệu — thông tin sinh viên luôn được bảo vệ.' },
+  { icon: GraduationCap, title: 'Dễ sử dụng', desc: 'Giao diện thân thiện, không cần cài đặt thêm, hoạt động trên mọi thiết bị.' },
 ];
 
 const steps = [
   { icon: GraduationCap, title: 'Đăng ký tài khoản', desc: 'Sinh viên và giảng viên tạo tài khoản trong vài giây.' },
   { icon: Zap, title: 'Mở phiên điểm danh', desc: 'Giảng viên mở phiên, hệ thống tự tạo QR và bật nhận diện.' },
-  { icon: CheckCircle, title: 'Điểm danh tức thì', desc: 'Sinh viên quét QR hoặc nhận diện khuôn mặt — xong trong 2 giây.' },
+  { icon: CheckCircle, title: 'Điểm danh tức thì', desc: 'Sinh viên quét QR hoặc nhận diện khuôn mặt — nhanh chóng và chính xác.' },
 ];
 
 const roles = [
@@ -363,15 +356,15 @@ export default function LandingPage() {
             {/* Badge */}
             <div className="anim-fadeUp inline-flex items-center gap-1.5 bg-blue-100 text-[#2563EB] text-xs font-semibold px-3 py-1.5 rounded-full mb-3">
               <span className="w-1.5 h-1.5 bg-[#2563EB] rounded-full animate-pulse" />
-              Hệ thống điểm danh thông minh
+              Hệ thống điểm danh hiện đại
             </div>
 
             {/* Title */}
             <h1 className="anim-fadeUp1 text-[2.1rem] leading-tight font-extrabold text-[#111827] mb-2">
               Điểm danh{' '}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#2563EB] to-[#60A5FA]">AI</span>
-              <br />chỉ trong{' '}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#3B82F6] to-[#2563EB]">2 giây</span>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#2563EB] to-[#60A5FA]">khuôn mặt</span>
+              <br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#3B82F6] to-[#2563EB]">thông minh</span>
             </h1>
 
             {/* Subtitle — 1 line only */}
@@ -398,20 +391,20 @@ export default function LandingPage() {
             <div className="text-left">
               <div className="inline-flex items-center gap-1.5 bg-blue-100 text-[#2563EB] text-xs font-semibold px-3 py-1.5 rounded-full mb-4">
                 <span className="w-1.5 h-1.5 bg-[#2563EB] rounded-full animate-pulse" />
-                Hệ thống điểm danh thông minh
+                Hệ thống điểm danh hiện đại
               </div>
               <h1 className="text-5xl font-extrabold text-[#111827] leading-tight mb-4">
                 Điểm danh{' '}
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#2563EB] to-[#60A5FA]">AI</span>
-                <br />chỉ trong{' '}
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#3B82F6] to-[#2563EB]">2 giây</span>
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#2563EB] to-[#60A5FA]">khuôn mặt</span>
+                <br />
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#3B82F6] to-[#2563EB]">thông minh</span>
               </h1>
               <p className="text-[#6B7280] text-base mb-4 leading-relaxed">
                 Giải pháp điểm danh thông minh dành cho<br />
                 <strong className="text-[#111827]">Trường Cao đẳng Kinh tế Đối ngoại.</strong>
               </p>
               <div className="grid grid-cols-2 gap-2 mb-6 max-w-sm">
-                {['Nhận diện khuôn mặt AI','Quét mã QR','Dashboard Realtime','Xuất Excel & PDF'].map(t => (
+                {['Nhận diện khuôn mặt','Quét mã QR','Dashboard Realtime','Xuất Excel & PDF'].map(t => (
                   <div key={t} className="flex items-center gap-1.5 text-sm text-[#6B7280]">
                     <CheckCircle size={14} className="text-[#2563EB] flex-shrink-0" /> {t}
                   </div>
@@ -440,9 +433,9 @@ export default function LandingPage() {
           {/* ── Stats 2x2 ── */}
           <div className="anim-fadeUp4 grid grid-cols-2 gap-3 max-w-sm mx-auto md:max-w-none md:grid-cols-4 md:gap-4">
             {[
-              { icon: Activity, to: 99, suffix: '%', label: 'Độ chính xác AI', color: 'text-blue-600', bg: 'bg-blue-50' },
-              { icon: Clock, to: 2, suffix: 's', label: 'Nhận diện', color: 'text-sky-600', bg: 'bg-sky-50' },
-              { icon: Users, to: 1000, suffix: '+', label: 'Lượt điểm danh', color: 'text-indigo-600', bg: 'bg-indigo-50' },
+              { icon: Activity, to: 99, suffix: '%', label: 'Độ chính xác', color: 'text-blue-600', bg: 'bg-blue-50' },
+              { icon: Users, to: 1000, suffix: '+', label: 'Lượt điểm danh', color: 'text-sky-600', bg: 'bg-sky-50' },
+              { icon: CheckCircle, to: 100, suffix: '%', label: 'Miễn phí', color: 'text-indigo-600', bg: 'bg-indigo-50' },
               { icon: Zap, to: 24, suffix: '/7', label: 'Hoạt động', color: 'text-green-600', bg: 'bg-green-50' },
             ].map(s => (
               <div key={s.label} className="rounded-[20px] bg-white border border-gray-100 p-3 md:p-4 flex flex-col items-center text-center shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all">
@@ -556,17 +549,8 @@ export default function LandingPage() {
               {[...Array(5)].map((_, i) => <Star key={i} size={18} className="text-yellow-300 fill-yellow-300" />)}
             </div>
             <blockquote className="text-white text-base sm:text-lg font-medium italic mb-5 leading-relaxed">
-              "Hệ thống giúp tôi tiết kiệm ít nhất 10 phút mỗi buổi học. Điểm danh khuôn mặt cực kỳ chính xác và nhanh chóng."
+              "Hệ thống giúp tôi tiết kiệm thời gian điểm danh mỗi buổi học. Giao diện đơn giản, dễ dùng và hoạt động ổn định trên cả điện thoại lẫn máy tính."
             </blockquote>
-            <div className="flex items-center justify-center gap-3">
-              <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-                <GraduationCap size={18} className="text-white" />
-              </div>
-              <div className="text-left">
-                <div className="text-white font-semibold text-sm">Giảng viên Khoa CNTT</div>
-                <div className="text-blue-100 text-xs">Trường Cao đẳng Kinh tế Đối ngoại</div>
-              </div>
-            </div>
           </div>
         </Reveal>
       </section>
@@ -598,7 +582,7 @@ export default function LandingPage() {
             <h2 className="text-2xl sm:text-3xl font-bold text-[#111827] mb-2">Sẵn sàng bắt đầu?</h2>
             <p className="text-[#6B7280] mb-3 text-sm">Đăng ký hoàn toàn miễn phí. Không cần thiết bị chuyên dụng.</p>
             <ul className="flex flex-col sm:flex-row flex-wrap justify-center gap-2 sm:gap-4 text-xs text-[#6B7280] mb-7">
-              {['Miễn phí cho sinh viên','Không cần thẻ tín dụng','Nhận diện dưới 2 giây'].map(t => (
+              {['Miễn phí cho sinh viên','Không cần thiết bị chuyên dụng','Hoạt động trên mọi trình duyệt'].map(t => (
                 <li key={t} className="flex items-center justify-center gap-1.5">
                   <CheckCircle size={13} className="text-green-500" /> {t}
                 </li>
@@ -633,7 +617,7 @@ export default function LandingPage() {
                 </div>
               </div>
               <p className="text-xs sm:text-sm leading-relaxed max-w-xs">
-                Hệ thống điểm danh thông minh ứng dụng AI và công nghệ hiện đại cho giáo dục.
+                Hệ thống điểm danh hiện đại ứng dụng công nghệ nhận diện khuôn mặt và QR Code cho giáo dục.
               </p>
             </div>
             <div>
