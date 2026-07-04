@@ -51,7 +51,13 @@ export default function RegisterPage() {
   const [searchParams] = useSearchParams();
   const initRole = searchParams.get('role') === 'teacher' ? 'teacher' : 'student';
 
-  const [step, setStep] = useState(1); // 1=thông tin, 2=thẻ SV, 3=khuôn mặt, 4=hoàn tất
+  const [step, setStep] = useState(1); // 1=thông tin, 1.5=OTP, 2=thẻ SV, 3=khuôn mặt, 4=hoàn tất
+  const [otpStep, setOtpStep] = useState(false); // true = đang ở màn OTP
+  const [otpValue, setOtpValue] = useState('');
+  const [otpError, setOtpError] = useState('');
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpCountdown, setOtpCountdown] = useState(0);
   const [role, setRole] = useState(initRole);
   const [form, setForm] = useState({ name: '', email: '', mssv: '', password: '', confirmPassword: '' });
   const [errors, setErrors] = useState({});
@@ -92,6 +98,13 @@ export default function RegisterPage() {
     document.documentElement.classList.remove('dark');
   }, []);
 
+  // Countdown gửi lại OTP
+  useEffect(() => {
+    if (otpCountdown <= 0) return;
+    const t = setTimeout(() => setOtpCountdown(c => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [otpCountdown]);
+
   // Cleanup camera on unmount
   useEffect(() => () => { streamRef.current?.getTracks().forEach(t => t.stop()); }, []);
 
@@ -113,15 +126,46 @@ export default function RegisterPage() {
     return e;
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     setApiError('');
     const e = validateStep1();
     if (Object.keys(e).length) { setErrors(e); return; }
-    if (role === 'teacher') {
-      // Teacher: skip step 2 & 3 → go straight to register
-      handleTeacherSubmit();
-    } else {
-      setStep(2);
+    // Gửi OTP trước khi tiếp tục
+    await handleSendOTP();
+  };
+
+  const handleSendOTP = async () => {
+    setOtpLoading(true);
+    setOtpError('');
+    try {
+      await authAPI.sendOTP(form.email, form.name);
+      setOtpStep(true);
+      setOtpSent(true);
+      setOtpCountdown(60);
+      setOtpValue('');
+    } catch (err) {
+      setApiError(err.response?.data?.message || 'Không thể gửi OTP. Vui lòng thử lại.');
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  const handleVerifyOTP = async () => {
+    if (otpValue.length !== 6) { setOtpError('Vui lòng nhập đủ 6 số'); return; }
+    setOtpLoading(true);
+    setOtpError('');
+    try {
+      await authAPI.verifyOTP(form.email, otpValue);
+      setOtpStep(false);
+      if (role === 'teacher') {
+        handleTeacherSubmit();
+      } else {
+        setStep(2);
+      }
+    } catch (err) {
+      setOtpError(err.response?.data?.message || 'Mã OTP không đúng');
+    } finally {
+      setOtpLoading(false);
     }
   };
 
@@ -314,7 +358,7 @@ export default function RegisterPage() {
         </div>
 
         {/* Progress steps (student only, steps 1-3) */}
-        {role === 'student' && step < 4 && (
+        {!otpStep && role === 'student' && step < 4 && (
           <div className="flex items-center mb-6">
             {stepLabels.map((label, i) => {
               const idx = i + 1;
@@ -343,8 +387,71 @@ export default function RegisterPage() {
           </div>
         )}
 
+        {/* ── OTP STEP ─────────────────────────────────── */}
+        {otpStep && (
+          <div className="space-y-5">
+            <div className="text-center">
+              <div className="inline-flex items-center justify-center w-14 h-14 bg-blue-100 rounded-full mb-3">
+                <span className="text-2xl">📧</span>
+              </div>
+              <h2 className="text-lg font-bold text-gray-800">Xác minh email</h2>
+              <p className="text-gray-500 text-sm mt-1">
+                Mã OTP đã được gửi đến<br />
+                <strong className="text-blue-600">{form.email}</strong>
+              </p>
+            </div>
+
+            {/* OTP input */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2 text-center">Nhập mã 6 số</label>
+              <input
+                type="tel"
+                inputMode="numeric"
+                maxLength={6}
+                value={otpValue}
+                onChange={e => { setOtpValue(e.target.value.replace(/\D/g, '').slice(0, 6)); setOtpError(''); }}
+                placeholder="• • • • • •"
+                className="w-full text-center text-3xl font-bold tracking-[0.5em] border-2 rounded-xl px-4 py-4 focus:outline-none focus:border-blue-500 border-gray-300 bg-white"
+                style={{ letterSpacing: '0.4em' }}
+              />
+              {otpError && (
+                <p className="text-red-500 text-sm mt-2 text-center flex items-center justify-center gap-1">
+                  <AlertCircle size={14} /> {otpError}
+                </p>
+              )}
+            </div>
+
+            <div className="text-center text-sm text-gray-500">
+              {otpCountdown > 0 ? (
+                <span>Gửi lại sau <strong className="text-blue-600">{otpCountdown}s</strong></span>
+              ) : (
+                <button onClick={handleSendOTP} disabled={otpLoading} className="text-blue-600 font-medium hover:underline">
+                  Gửi lại mã OTP
+                </button>
+              )}
+            </div>
+
+            <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3 text-xs text-yellow-700 text-center">
+              ⏱ Mã OTP có hiệu lực trong <strong>5 phút</strong>
+            </div>
+
+            <div className="flex gap-3">
+              <button onClick={() => setOtpStep(false)} className="flex-1 border border-gray-300 text-gray-600 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-50">
+                Quay lại
+              </button>
+              <button
+                onClick={handleVerifyOTP}
+                disabled={otpLoading || otpValue.length !== 6}
+                className="flex-1 bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 text-white py-2.5 rounded-lg text-sm font-medium flex items-center justify-center gap-2"
+              >
+                {otpLoading ? <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Đang xác minh...</> : <><CheckCircle size={15} /> Xác minh</>}
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* ── STEP 1: Thông tin cơ bản ─────────────────── */}
-        {step === 1 && (
+        {!otpStep && step === 1 && (
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Vai trò</label>
@@ -461,7 +568,7 @@ export default function RegisterPage() {
         )}
 
         {/* ── STEP 2: Ảnh thẻ sinh viên ────────────────── */}
-        {step === 2 && (
+        {!otpStep && step === 2 && (
           <div className="space-y-5">
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-700">
               <p className="font-semibold mb-1 flex items-center gap-1.5"><Upload size={14}/> Tải lên ảnh thẻ sinh viên</p>
@@ -497,7 +604,7 @@ export default function RegisterPage() {
         )}
 
         {/* ── STEP 3: Quét khuôn mặt ───────────────────── */}
-        {step === 3 && (
+        {!otpStep && step === 3 && (
           <div className="space-y-4">
             <div className="bg-violet-50 border border-violet-200 rounded-xl p-4 text-sm text-violet-700">
               <p className="font-semibold mb-1 flex items-center gap-1.5"><Camera size={14}/> Đăng ký nhận diện khuôn mặt</p>
@@ -594,7 +701,7 @@ export default function RegisterPage() {
         )}
 
         {/* ── STEP 4: Hoàn tất ──────────────────────────── */}
-        {step === 4 && (
+        {!otpStep && step === 4 && (
           <div className="text-center py-4 space-y-4">
             <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto"><CheckCircle size={40} className="text-green-500"/></div>
             <h2 className="text-xl font-bold text-gray-800">Đăng ký thành công!</h2>
@@ -607,7 +714,7 @@ export default function RegisterPage() {
           </div>
         )}
 
-        {step === 1 && (
+        {!otpStep && step === 1 && (
           <p className="text-center text-sm text-gray-500 mt-5">
             Đã có tài khoản?{' '}
             <Link to="/login" className="text-blue-500 hover:underline font-medium">Đăng nhập</Link>

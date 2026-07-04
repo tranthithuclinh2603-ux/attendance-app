@@ -1,6 +1,65 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { db } = require('../models/firebase');
+const { sendOTPEmail } = require('../services/emailService');
+
+/* ── Gửi OTP về email ── */
+const sendOTP = async (req, res) => {
+  try {
+    const { email, name } = req.body;
+    if (!email) return res.status(400).json({ success: false, message: 'Email là bắt buộc' });
+
+    // Kiểm tra email đã tồn tại chưa
+    const snap = await db.ref('users').orderByChild('email').equalTo(email).once('value');
+    if (snap.exists()) return res.status(409).json({ success: false, message: 'Email đã được sử dụng' });
+
+    // Tạo OTP 6 số
+    const otp = String(Math.floor(100000 + Math.random() * 900000));
+    const expiresAt = Date.now() + 5 * 60 * 1000; // 5 phút
+
+    // Lưu OTP vào Firebase (key = email encode)
+    const key = email.replace(/[.#$[\]]/g, '_');
+    await db.ref(`otps/${key}`).set({ otp, expiresAt, email });
+
+    // Gửi email
+    await sendOTPEmail(email, otp, name);
+
+    res.json({ success: true, message: 'Mã OTP đã được gửi về email của bạn' });
+  } catch (err) {
+    console.error('sendOTP error:', err);
+    res.status(500).json({ success: false, message: 'Không thể gửi email. Vui lòng thử lại.' });
+  }
+};
+
+/* ── Xác minh OTP ── */
+const verifyOTP = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+    if (!email || !otp) return res.status(400).json({ success: false, message: 'Thiếu thông tin' });
+
+    const key = email.replace(/[.#$[\]]/g, '_');
+    const snap = await db.ref(`otps/${key}`).once('value');
+
+    if (!snap.exists()) return res.status(400).json({ success: false, message: 'OTP không hợp lệ hoặc đã hết hạn' });
+
+    const { otp: savedOtp, expiresAt } = snap.val();
+
+    if (Date.now() > expiresAt) {
+      await db.ref(`otps/${key}`).remove();
+      return res.status(400).json({ success: false, message: 'OTP đã hết hạn. Vui lòng gửi lại.' });
+    }
+
+    if (otp !== savedOtp) return res.status(400).json({ success: false, message: 'Mã OTP không đúng' });
+
+    // Xóa OTP sau khi dùng
+    await db.ref(`otps/${key}`).remove();
+
+    res.json({ success: true, message: 'Xác minh thành công' });
+  } catch (err) {
+    console.error('verifyOTP error:', err);
+    res.status(500).json({ success: false, message: 'Lỗi server' });
+  }
+};
 
 const register = async (req, res) => {
   try {
@@ -362,4 +421,5 @@ const changePassword = async (req, res) => {
 };
 
 module.exports = { register, login, resetPassword, updateProfile, updateAvatar, updateClass, bulkRegister,
-  saveWebAuthnCredential, loginWebAuthn, saveFaceDescriptors, getMyFaceDescriptors, saveStudentId, changePassword };
+  saveWebAuthnCredential, loginWebAuthn, saveFaceDescriptors, getMyFaceDescriptors, saveStudentId, changePassword,
+  sendOTP, verifyOTP };
