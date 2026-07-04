@@ -1,14 +1,14 @@
 const nodemailer = require('nodemailer');
 
 const transporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port: 587,
-  secure: false,
-  family: 4, // ép IPv4, tránh ENETUNREACH trên Railway
+  host: '74.125.133.109', // IP trực tiếp smtp.gmail.com IPv4
+  port: 465,
+  secure: true,
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,
   },
+  tls: { rejectUnauthorized: false },
 });
 
 async function sendOTPEmail(toEmail, otp, name = '') {
