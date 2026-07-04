@@ -1,19 +1,10 @@
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 
-const transporter = nodemailer.createTransport({
-  host: '74.125.133.109', // IP trực tiếp smtp.gmail.com IPv4
-  port: 465,
-  secure: true,
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-  tls: { rejectUnauthorized: false },
-});
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 async function sendOTPEmail(toEmail, otp, name = '') {
-  const mailOptions = {
-    from: `"Điểm Danh SV - CĐKTĐN" <${process.env.EMAIL_USER}>`,
+  await resend.emails.send({
+    from: 'Điểm Danh SV <onboarding@resend.dev>',
     to: toEmail,
     subject: 'Mã OTP xác thực đăng ký tài khoản',
     html: `
@@ -41,9 +32,7 @@ async function sendOTPEmail(toEmail, otp, name = '') {
         <p style="color:#D1D5DB;font-size:11px;text-align:center;margin-top:16px;">© 2026 Hệ thống Điểm Danh Sinh Viên — CĐKTĐN</p>
       </div>
     `,
-  };
-
-  await transporter.sendMail(mailOptions);
+  });
 }
 
 module.exports = { sendOTPEmail };
