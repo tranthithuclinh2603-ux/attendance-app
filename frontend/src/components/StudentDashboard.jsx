@@ -150,7 +150,7 @@ function WeekView({ timetable }) {
 }
 
 // ── Lịch học: Tháng ──────────────────────────────────
-function MonthView({ timetable }) {
+function MonthView({ timetable, activeSessions }) {
   const [monthOffset, setMonthOffset] = useState(0);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const base = new Date();
@@ -158,8 +158,11 @@ function MonthView({ timetable }) {
   const Y = dsp.getFullYear(), M = dsp.getMonth();
   const daysInMonth = new Date(Y,M+1,0).getDate();
   const firstDow    = (() => { const d=new Date(Y,M,1).getDay(); return d===0?7:d; })();
-  const dateDow  = (day) => { const d=new Date(Y,M,day).getDay(); return d===0?null:d+1; };
-  const hasClass = (day) => { if (!timetable.length) return false; const dow=dateDow(day); return !!dow && timetable.some(e=>e.dayOfWeek===dow); };
+  const hasActiveSession = (day) => {
+    if (!activeSessions?.length) return false;
+    const dateStr = `${Y}-${String(M+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    return activeSessions.some(s => s.date === dateStr || (s.createdAt && s.createdAt.startsWith(dateStr)));
+  };
   const isToday  = (day) => { const t=new Date(); return day===t.getDate()&&M===t.getMonth()&&Y===t.getFullYear(); };
   const isSel    = (day) => day===selectedDate.getDate()&&M===selectedDate.getMonth()&&Y===selectedDate.getFullYear();
   const selDow   = selectedDate.getDay()===0?null:selectedDate.getDay()+1;
@@ -181,19 +184,19 @@ function MonthView({ timetable }) {
         <div className="grid grid-cols-7 gap-y-1">
           {Array(firstDow-1).fill(null).map((_,i)=><div key={`b${i}`}/>)}
           {Array(daysInMonth).fill(null).map((_,i)=>{
-            const day=i+1, sel=isSel(day), tod=isToday(day), hasC=hasClass(day);
+            const day=i+1, sel=isSel(day), tod=isToday(day), hasSession=hasActiveSession(day);
             const isSun=new Date(Y,M,day).getDay()===0;
             return (
               <button key={day} onClick={()=>setSelectedDate(new Date(Y,M,day))}
                 className={`flex flex-col items-center py-1.5 rounded-xl transition-all ${sel?'bg-indigo-600':tod?'bg-indigo-50 dark:bg-indigo-900/20':'hover:bg-gray-50 dark:hover:bg-gray-700/40'}`}>
                 <span className={`text-sm font-medium ${sel?'text-white':tod?'text-indigo-600':isSun?'text-red-400':'text-gray-700 dark:text-gray-300'}`}>{day}</span>
-                <span className={`w-1.5 h-1.5 rounded-full mt-0.5 ${hasC?(sel?'bg-white/60':'bg-indigo-400'):'opacity-0'}`}/>
+                <span className={`w-1.5 h-1.5 rounded-full mt-0.5 ${hasSession?(sel?'bg-white/60':'bg-emerald-400 animate-pulse'):'opacity-0'}`}/>
               </button>
             );
           })}
         </div>
-        {timetable.length > 0 && (
-          <p className="text-xs text-gray-400 text-center mt-3">● Ngày có lịch học theo TKB tuần</p>
+        {activeSessions?.length > 0 && (
+          <p className="text-xs text-gray-400 text-center mt-3">● Ngày có phiên điểm danh đang mở</p>
         )}
       </div>
 
@@ -674,7 +677,7 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser }) {
       </div>
       {schedView==='today' && <TodayView timetable={timetable}/>}
       {schedView==='week'  && <WeekView  timetable={timetable}/>}
-      {schedView==='month' && <MonthView timetable={timetable}/>}
+      {schedView==='month' && <MonthView timetable={timetable} activeSessions={activeSessions}/>}
     </div>
   );
 
