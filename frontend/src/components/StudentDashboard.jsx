@@ -101,10 +101,13 @@ function WeekView({ timetable }) {
   const [weekOffset, setWeekOffset] = useState(0);
   const [selectedDow, setSelectedDow] = useState(todayDow() || 2);
 
+  const SEMESTER_END = new Date('2026-07-17T23:59:59');
+
   function getWeekDates(offset) {
     const now = new Date(), d = now.getDay() || 7;
     const mon = new Date(now); mon.setDate(now.getDate() - (d-1) + offset*7);
-    return [2,3,4,5,6,7].map((dow, i) => {
+    // Chỉ T2→T6 (bỏ T7=dow 7)
+    return [2,3,4,5,6].map((dow, i) => {
       const dt = new Date(mon); dt.setDate(mon.getDate()+i); return { dow, date: dt };
     });
   }
@@ -112,7 +115,7 @@ function WeekView({ timetable }) {
   const weekDates  = getWeekDates(weekOffset);
   const today      = new Date();
   const isToday    = (d) => d.getDate()===today.getDate() && d.getMonth()===today.getMonth() && d.getFullYear()===today.getFullYear();
-  const hasClass   = (dow) => timetable.some(e => e.dayOfWeek === dow);
+  const hasClass   = (dow, date) => date <= SEMESTER_END && timetable.some(e => e.dayOfWeek === dow);
   const entries    = timetable.filter(e => e.dayOfWeek === selectedDow).sort((a,b) => a.period-b.period);
   const weekNum    = getSchoolWeek(weekDates[0].date);
 
@@ -124,9 +127,9 @@ function WeekView({ timetable }) {
         <button onClick={() => setWeekOffset(w=>w+1)} className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400"><ChevronRight size={18}/></button>
       </div>
 
-      <div className="grid grid-cols-6 gap-1.5">
+      <div className="grid grid-cols-5 gap-1.5">
         {weekDates.map(({ dow, date }) => {
-          const active = dow === selectedDow, today_ = isToday(date), hasC = hasClass(dow);
+          const active = dow === selectedDow, today_ = isToday(date), hasC = hasClass(dow, date);
           return (
             <button key={dow} onClick={() => setSelectedDow(dow)}
               className={`flex flex-col items-center py-2.5 rounded-2xl transition-all ${active?'bg-indigo-600 text-white shadow-md':today_?'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600':'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 shadow-sm'}`}>
@@ -151,13 +154,24 @@ function WeekView({ timetable }) {
 
 // ── Lịch học: Tháng ──────────────────────────────────
 function MonthView({ timetable, activeSessions }) {
+  const SEMESTER_END = new Date('2026-07-17T23:59:59');
   const [monthOffset, setMonthOffset] = useState(0);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const base = new Date();
   const dsp  = new Date(base.getFullYear(), base.getMonth()+monthOffset, 1);
   const Y = dsp.getFullYear(), M = dsp.getMonth();
   const daysInMonth = new Date(Y,M+1,0).getDate();
-  const firstDow    = (() => { const d=new Date(Y,M,1).getDay(); return d===0?7:d; })();
+  // Bỏ CN (0) và T7 (6) → chỉ T2-T6 (1-5)
+  const firstDow    = (() => { const d=new Date(Y,M,1).getDay(); return d===0||d===6?null:d; })();
+  const dateDow  = (day) => { const d=new Date(Y,M,day).getDay(); if(d===0||d===6) return null; return d+1; };
+  const isSat    = (day) => new Date(Y,M,day).getDay()===6;
+  const isSun    = (day) => new Date(Y,M,day).getDay()===0;
+  const hasClass = (day) => {
+    const d = new Date(Y,M,day);
+    if (d > SEMESTER_END) return false;
+    const dow = dateDow(day);
+    return !!dow && timetable.some(e => e.dayOfWeek === dow);
+  };
   const hasActiveSession = (day) => {
     if (!activeSessions?.length) return false;
     const dateStr = `${Y}-${String(M+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
@@ -165,7 +179,7 @@ function MonthView({ timetable, activeSessions }) {
   };
   const isToday  = (day) => { const t=new Date(); return day===t.getDate()&&M===t.getMonth()&&Y===t.getFullYear(); };
   const isSel    = (day) => day===selectedDate.getDate()&&M===selectedDate.getMonth()&&Y===selectedDate.getFullYear();
-  const selDow   = selectedDate.getDay()===0?null:selectedDate.getDay()+1;
+  const selDow   = (selectedDate.getDay()===0||selectedDate.getDay()===6)?null:selectedDate.getDay()+1;
   const selEnt   = timetable.filter(e=>e.dayOfWeek===selDow).sort((a,b)=>a.period-b.period);
   const MONTHS   = ['Tháng 1','Tháng 2','Tháng 3','Tháng 4','Tháng 5','Tháng 6','Tháng 7','Tháng 8','Tháng 9','Tháng 10','Tháng 11','Tháng 12'];
 
@@ -178,25 +192,30 @@ function MonthView({ timetable, activeSessions }) {
       </div>
 
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-4">
-        <div className="grid grid-cols-7 mb-2">
-          {['T2','T3','T4','T5','T6','T7','CN'].map(d=><div key={d} className={`text-center text-xs font-semibold py-1 ${d==='CN'?'text-red-400':'text-gray-400'}`}>{d}</div>)}
+        <div className="grid grid-cols-5 mb-2">
+          {['T2','T3','T4','T5','T6'].map(d=><div key={d} className="text-center text-xs font-semibold py-1 text-gray-400">{d}</div>)}
         </div>
-        <div className="grid grid-cols-7 gap-y-1">
-          {Array(firstDow-1).fill(null).map((_,i)=><div key={`b${i}`}/>)}
+        <div className="grid grid-cols-5 gap-y-1">
+          {/* Ô trống đầu tháng (bỏ T7, CN) */}
+          {Array(Math.max(0,(new Date(Y,M,1).getDay()||7)-2+1)-1).fill(null).map((_,i)=><div key={`b${i}`}/>)}
           {Array(daysInMonth).fill(null).map((_,i)=>{
-            const day=i+1, sel=isSel(day), tod=isToday(day), hasSession=hasActiveSession(day);
-            const isSun=new Date(Y,M,day).getDay()===0;
+            const day=i+1;
+            if(isSat(day)||isSun(day)) return null;
+            const sel=isSel(day), tod=isToday(day), hasC=hasClass(day), hasSession=hasActiveSession(day);
+            const dot = hasSession ? (sel?'bg-white/60':'bg-emerald-400 animate-pulse')
+                      : hasC       ? (sel?'bg-white/60':'bg-indigo-400')
+                      : 'opacity-0';
             return (
               <button key={day} onClick={()=>setSelectedDate(new Date(Y,M,day))}
                 className={`flex flex-col items-center py-1.5 rounded-xl transition-all ${sel?'bg-indigo-600':tod?'bg-indigo-50 dark:bg-indigo-900/20':'hover:bg-gray-50 dark:hover:bg-gray-700/40'}`}>
-                <span className={`text-sm font-medium ${sel?'text-white':tod?'text-indigo-600':isSun?'text-red-400':'text-gray-700 dark:text-gray-300'}`}>{day}</span>
-                <span className={`w-1.5 h-1.5 rounded-full mt-0.5 ${hasSession?(sel?'bg-white/60':'bg-emerald-400 animate-pulse'):'opacity-0'}`}/>
+                <span className={`text-sm font-medium ${sel?'text-white':tod?'text-indigo-600':'text-gray-700 dark:text-gray-300'}`}>{day}</span>
+                <span className={`w-1.5 h-1.5 rounded-full mt-0.5 ${dot}`}/>
               </button>
             );
           })}
         </div>
-        {activeSessions?.length > 0 && (
-          <p className="text-xs text-gray-400 text-center mt-3">● Ngày có phiên điểm danh đang mở</p>
+        {timetable.length > 0 && (
+          <p className="text-xs text-gray-400 text-center mt-3">● Ngày có lịch học (đến 17/7)</p>
         )}
       </div>
 
