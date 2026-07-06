@@ -4,11 +4,8 @@ const { verifyToken, verifyTeacher } = require('../middleware/auth');
 const {
   register, login, resetPassword, updateProfile, updateAvatar, updateClass, bulkRegister,
   saveWebAuthnCredential, loginWebAuthn, saveFaceDescriptors, getMyFaceDescriptors, saveStudentId, changePassword,
-  sendOTP, verifyOTP,
 } = require('../controllers/authController');
 
-router.post('/send-otp', sendOTP);
-router.post('/verify-otp', verifyOTP);
 router.post('/register', register);
 router.post('/login', login);
 router.post('/login-webauthn', loginWebAuthn);
