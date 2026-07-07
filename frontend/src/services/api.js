@@ -96,9 +96,9 @@ export const sessionAPI = {
 
 // Timetable (Thời khóa biểu)
 export const timetableAPI = {
-  save: (classId, entries) => API.post(`/timetable/${classId}`, { entries }),
-  get: (classId) => API.get(`/timetable/${classId}`),
-  autoOpen: (classId) => API.post(`/timetable/${classId}/auto-open`),
+  save: (classId, entries) => API.post(`/timetable/${encodeURIComponent(classId)}`, { entries }),
+  get: (classId) => API.get(`/timetable/${encodeURIComponent(classId)}`),
+  autoOpen: (classId) => API.post(`/timetable/${encodeURIComponent(classId)}/auto-open`),
 };
 
 // Leave (Xin nghỉ phép)

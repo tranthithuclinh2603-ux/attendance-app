@@ -6,10 +6,11 @@ import * as XLSX from 'xlsx';
 const SCHOOL = { lat: 10.813308852984058, lng: 106.77209163591941 };
 
 const PERIODS = [
-  { period: 1, label: 'Ca 1', startTime: '07:00', endTime: '09:30' },
-  { period: 2, label: 'Ca 2', startTime: '09:45', endTime: '12:15' },
-  { period: 3, label: 'Ca 3', startTime: '12:45', endTime: '15:15' },
-  { period: 4, label: 'Ca 4', startTime: '15:30', endTime: '18:00' },
+  { period: 1, label: 'Ca 1', startTime: '07:00', endTime: '09:15' },
+  { period: 2, label: 'Ca 2', startTime: '09:40', endTime: '11:55' },
+  { period: 3, label: 'Ca 3 (TH)', startTime: '13:00', endTime: '17:10' },
+  { period: 4, label: 'Ca 4', startTime: '13:00', endTime: '15:15' },
+  { period: 5, label: 'Ca 5', startTime: '15:40', endTime: '17:55' },
 ];
 
 const STATUS_STYLE = {
@@ -276,11 +277,24 @@ const DAY_MAP = {
 const PERIOD_MAP = {
   '1': 1, 'ca 1': 1, 'ca1': 1, '1st': 1,
   '2': 2, 'ca 2': 2, 'ca2': 2, '2nd': 2,
-  '3': 3, 'ca 3': 3, 'ca3': 3, '3rd': 3,
+  '3': 3, 'ca 3': 3, 'ca3': 3, '3rd': 3, 'ca 3 (th)': 3,
   '4': 4, 'ca 4': 4, 'ca4': 4, '4th': 4,
+  '5': 5, 'ca 5': 5, 'ca5': 5, '5th': 5,
 };
 function parseDay(val) { return DAY_MAP[String(val ?? '').toLowerCase().trim()] ?? null; }
 function parsePeriod(val) { return PERIOD_MAP[String(val ?? '').toLowerCase().trim()] ?? null; }
+// Excel lưu giờ là số thập phân (0.291666 = 07:00). Chuyển về chuỗi HH:MM
+function parseTimeCell(val) {
+  if (!val && val !== 0) return null;
+  if (typeof val === 'string' && /^\d{1,2}:\d{2}/.test(val.trim())) return val.trim().slice(0, 5);
+  if (typeof val === 'number' && val >= 0 && val < 1) {
+    const totalMin = Math.round(val * 24 * 60);
+    const h = Math.floor(totalMin / 60);
+    const m = totalMin % 60;
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+  }
+  return null;
+}
 
 // ── Thẻ TKB ────────────────────────────────────────────
 function TimetableEditor({ classId }) {
@@ -317,12 +331,16 @@ function TimetableEditor({ classId }) {
 
   const handleSave = async (entriesToSave = entries) => {
     setSaving(true);
+    setImportError('');
     try {
       await timetableAPI.save(classId, entriesToSave);
-      showMsg(`Đã lưu ${entriesToSave.length} ca học`);
       setImportPreview(null);
+      setEntries(entriesToSave);
+      showMsg(`Đã lưu ${entriesToSave.length} ca học`);
     } catch (err) {
-      showMsg(err.response?.data?.message || 'Lỗi lưu TKB', false);
+      const errMsg = err.response?.data?.message || err.message || 'Lỗi lưu TKB. Vui lòng thử lại.';
+      setImportError(errMsg);
+      showMsg(errMsg, false);
     } finally {
       setSaving(false);
     }
@@ -333,12 +351,17 @@ function TimetableEditor({ classId }) {
     const wb = XLSX.utils.book_new();
     const data = [
       ['Thu', 'Ca', 'Mon hoc', 'Gio bat dau', 'Gio ket thuc'],
-      [2, 1, 'Lap trinh Web', '07:00', '09:30'],
-      [2, 2, 'Co so du lieu', '09:45', '12:15'],
-      [3, 1, 'Tieng Anh', '07:00', '09:30'],
-      [4, 3, 'Lap trinh Mobile', '12:45', '15:15'],
-      [5, 2, 'Quan tri mang', '09:45', '12:15'],
-      [6, 4, 'Do an tot nghiep', '15:30', '18:00'],
+      [2, 1, 'Giao duc chinh tri', '07:00', '09:15'],
+      [2, 2, 'Chien luoc kinh doanh TMDT', '09:40', '11:55'],
+      [2, 4, 'Quan tri nguon nhan luc', '13:00', '15:15'],
+      [2, 5, 'Tieng Anh thuong mai', '15:40', '17:55'],
+      [3, 1, 'Giao duc chinh tri', '07:00', '09:15'],
+      [3, 3, 'Thuc hanh tong hop nganh TMDT', '13:00', '17:10'],
+      [4, 1, 'Giao duc chinh tri', '07:00', '09:15'],
+      [4, 2, 'Chien luoc kinh doanh TMDT', '09:40', '11:55'],
+      [5, 1, 'Giao duc chinh tri', '07:00', '09:15'],
+      [6, 2, 'Chien luoc kinh doanh TMDT', '09:40', '11:55'],
+      [6, 5, 'Tieng Anh thuong mai', '15:40', '17:55'],
     ];
     const ws = XLSX.utils.aoa_to_sheet(data);
     ws['!cols'] = [{ wch: 10 }, { wch: 6 }, { wch: 25 }, { wch: 14 }, { wch: 14 }];
@@ -348,7 +371,7 @@ function TimetableEditor({ classId }) {
       ['HUONG DAN DIEN FILE TKB'],
       [''],
       ['Cot Thu:', '2=Thu 2, 3=Thu 3, 4=Thu 4, 5=Thu 5, 6=Thu 6, 7=Thu 7'],
-      ['Cot Ca:', '1=Ca1 (07:00-09:30), 2=Ca2 (09:45-12:15), 3=Ca3 (12:45-15:15), 4=Ca4 (15:30-18:00)'],
+      ['Cot Ca:', '1=Ca1 (07:00-09:15), 2=Ca2 (09:40-11:55), 3=Ca3-TH (13:00-17:10), 4=Ca4 (13:00-15:15), 5=Ca5 (15:40-17:55)'],
       ['Cot Mon hoc:', 'Ten mon hoc chinh xac'],
       ['Cot Gio bat dau:', 'Dinh dang HH:MM, vi du 07:00 (co the bo trong de dung mac dinh theo ca)'],
       ['Cot Gio ket thuc:', 'Dinh dang HH:MM, vi du 09:30 (co the bo trong de dung mac dinh theo ca)'],
@@ -397,8 +420,8 @@ function TimetableEditor({ classId }) {
             dayOfWeek,
             period,
             subject: String(subject).trim(),
-            startTime: String(startTime || '').trim() || periodDefault?.startTime || '07:00',
-            endTime: String(endTime || '').trim() || periodDefault?.endTime || '09:30',
+            startTime: parseTimeCell(startTime) || periodDefault?.startTime || '07:00',
+            endTime: parseTimeCell(endTime) || periodDefault?.endTime || '09:15',
             lateAfterMinutes: 15,
           });
         });
@@ -459,12 +482,19 @@ function TimetableEditor({ classId }) {
           </table>
         </div>
 
+        {importError && (
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg p-3 flex items-start gap-2">
+            <AlertCircle size={15} className="text-red-500 mt-0.5 shrink-0" />
+            <p className="text-xs text-red-600 dark:text-red-400">{importError}</p>
+          </div>
+        )}
+
         <div className="flex gap-2">
-          <button onClick={() => setImportPreview(null)}
+          <button onClick={() => { setImportPreview(null); setImportError(''); }}
             className="flex-1 border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 py-2.5 rounded-lg text-sm hover:bg-gray-50 dark:hover:bg-gray-700">
             Hủy
           </button>
-          <button onClick={() => { setEntries(importPreview.rows); handleSave(importPreview.rows); }} disabled={saving}
+          <button onClick={() => handleSave(importPreview.rows)} disabled={saving}
             className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg text-sm font-semibold disabled:opacity-60">
             {saving ? 'Đang lưu...' : `Lưu ${importPreview.rows.length} ca học`}
           </button>
