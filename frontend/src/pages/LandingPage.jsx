@@ -37,7 +37,7 @@ const STYLE = `
 /* ─── Logo Icon ─── */
 function LogoIcon({ size = 32 }) {
   const s = Math.round(size * 0.6);
-  return <Users size={s} className="text-white" />;
+  return <GraduationCap size={s} className="text-white" />;
 }
 
 /* ─── Premium Dashboard Mockup ─── */
