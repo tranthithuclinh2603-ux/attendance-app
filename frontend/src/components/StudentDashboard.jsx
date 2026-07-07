@@ -192,15 +192,14 @@ function MonthView({ timetable, activeSessions }) {
       </div>
 
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-4">
-        <div className="grid grid-cols-5 mb-2">
-          {['T2','T3','T4','T5','T6'].map(d=><div key={d} className="text-center text-xs font-semibold py-1 text-gray-400">{d}</div>)}
+        <div className="grid grid-cols-7 mb-2">
+          {['T2','T3','T4','T5','T6','T7','CN'].map(d=><div key={d} className="text-center text-xs font-semibold py-1 text-gray-400">{d}</div>)}
         </div>
-        <div className="grid grid-cols-5 gap-y-1">
-          {/* Ô trống đầu tháng (bỏ T7, CN) */}
-          {Array(Math.max(0,(new Date(Y,M,1).getDay()||7)-2+1)-1).fill(null).map((_,i)=><div key={`b${i}`}/>)}
+        <div className="grid grid-cols-7 gap-y-1">
+          {/* Ô trống đầu tháng */}
+          {Array((new Date(Y,M,1).getDay()||7)-1).fill(null).map((_,i)=><div key={`b${i}`}/>)}
           {Array(daysInMonth).fill(null).map((_,i)=>{
             const day=i+1;
-            if(isSat(day)||isSun(day)) return null;
             const sel=isSel(day), tod=isToday(day), hasC=hasClass(day), hasSession=hasActiveSession(day);
             const dot = hasSession ? (sel?'bg-white/60':'bg-emerald-400 animate-pulse')
                       : hasC       ? (sel?'bg-white/60':'bg-indigo-400')
