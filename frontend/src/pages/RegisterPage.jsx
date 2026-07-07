@@ -454,7 +454,7 @@ export default function RegisterPage() {
               </div>
               <div className="relative">
                 <input type={showPw ? 'text' : 'password'} name="password" value={form.password} onChange={handleChange} placeholder="Tối thiểu 6 ký tự" className={INPUT_CLS(errors.password) + ' pr-10'} />
-                <button type="button" onClick={() => setShowPw(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">{showPw ? <EyeOff size={16}/> : <Eye size={16}/>}</button>
+                <button type="button" onMouseDown={e => e.preventDefault()} onClick={() => setShowPw(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 p-1">{showPw ? <EyeOff size={18}/> : <Eye size={18}/>}</button>
               </div>
               {/* Password strength */}
               {form.password && (() => {
@@ -476,7 +476,7 @@ export default function RegisterPage() {
               <label className="block text-sm font-medium text-gray-700 mb-1">Xác nhận mật khẩu</label>
               <div className="relative">
                 <input type={showConfirmPw ? 'text' : 'password'} name="confirmPassword" value={form.confirmPassword} onChange={handleChange} placeholder="Nhập lại mật khẩu" className={INPUT_CLS(errors.confirmPassword) + ' pr-10'} />
-                <button type="button" onClick={() => setShowConfirmPw(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">{showConfirmPw ? <EyeOff size={16}/> : <Eye size={16}/>}</button>
+                <button type="button" onMouseDown={e => e.preventDefault()} onClick={() => setShowConfirmPw(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 p-1">{showConfirmPw ? <EyeOff size={18}/> : <Eye size={18}/>}</button>
               </div>
               {form.confirmPassword && form.password === form.confirmPassword && (
                 <p className="text-green-500 text-xs mt-1 flex items-center gap-1"><CheckCircle size={12}/> Mật khẩu khớp</p>
