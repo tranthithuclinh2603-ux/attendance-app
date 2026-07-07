@@ -166,14 +166,17 @@ export default function RegisterPage() {
     setVerifyError('');
     idCardDescriptorRef.current = null;
     try {
-      // 1. Bật camera ngay — hiển thị video
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: { ideal: 'user' },
-          width: { ideal: 640 },
-          height: { ideal: 480 },
-        },
-      });
+      // 1. Bật camera — thử từng constraint, fallback nếu lỗi
+      let stream;
+      const constraints = [
+        { video: { facingMode: { ideal: 'user' }, width: { ideal: 640 }, height: { ideal: 480 } } },
+        { video: { facingMode: 'user' } },
+        { video: true },
+      ];
+      for (const c of constraints) {
+        try { stream = await navigator.mediaDevices.getUserMedia(c); break; } catch (_) {}
+      }
+      if (!stream) throw new Error('camera_unavailable');
       streamRef.current = stream;
       setFaceStep('loadingModels');
       setFaceMsg('Đang tải model xác thực (lần đầu ~20s)...');
@@ -203,8 +206,12 @@ export default function RegisterPage() {
     } catch (err) {
       setFaceStep('error');
       setFaceMsg(
-        err.name === 'NotAllowedError'
-          ? 'Bạn cần cho phép truy cập camera.'
+        err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError'
+          ? 'Bạn cần cho phép truy cập camera. Vào cài đặt trình duyệt và cấp quyền camera.'
+          : err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError'
+          ? 'Không tìm thấy camera trên thiết bị.'
+          : err.name === 'NotReadableError'
+          ? 'Camera đang được ứng dụng khác sử dụng. Đóng các app khác và thử lại.'
           : 'Không thể khởi động camera. Vui lòng thử lại.'
       );
     }
