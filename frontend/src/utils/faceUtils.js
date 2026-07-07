@@ -27,14 +27,14 @@ export async function extractDescriptorFromBase64(base64) {
   return new Promise((resolve) => {
     const img = new Image();
     img.onload = async () => {
-      // Resize xuống tối đa 400px trước khi detect để tăng tốc
       const MAX = 1000;
       const scale = Math.min(1, MAX / Math.max(img.width, img.height));
       const canvas = document.createElement('canvas');
       canvas.width = Math.round(img.width * scale);
       canvas.height = Math.round(img.height * scale);
       canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-      const descriptor = await detectFaceDescriptor(canvas);
+      // Ảnh thẻ SV dùng inputSize 416 để nhận diện chính xác hơn
+      const descriptor = await detectFaceDescriptor(canvas, { inputSize: 416, scoreThreshold: 0.3 });
       resolve(descriptor);
     };
     img.onerror = () => resolve(null);
@@ -50,10 +50,10 @@ export function compareTwoDescriptors(a, b, threshold = 0.42) {
   return { match: dist < threshold, distance: +dist.toFixed(3), confidence };
 }
 
-export async function detectFaceDescriptor(source) {
+export async function detectFaceDescriptor(source, { inputSize = 320, scoreThreshold = 0.4 } = {}) {
   const faceapi = window.faceapi;
   const result = await faceapi
-    .detectSingleFace(source, new faceapi.TinyFaceDetectorOptions({ inputSize: 160, scoreThreshold: 0.4 }))
+    .detectSingleFace(source, new faceapi.TinyFaceDetectorOptions({ inputSize, scoreThreshold }))
     .withFaceLandmarks(true)
     .withFaceDescriptor();
   return result ? Array.from(result.descriptor) : null;
