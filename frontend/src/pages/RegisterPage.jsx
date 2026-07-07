@@ -166,23 +166,35 @@ export default function RegisterPage() {
     setVerifyError('');
     idCardDescriptorRef.current = null;
     try {
-      // 1. Kiểm tra API có khả dụng không
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw Object.assign(new Error('api_unavailable'), { name: 'APIUnavailableError' });
+      // 1. Bật camera — thử từng constraint, fallback nếu lỗi
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setFaceStep('error');
+        setFaceMsg('Trình duyệt không hỗ trợ camera. Vui lòng mở bằng Safari hoặc Chrome.');
+        return;
       }
-      // Bật camera — thử từng constraint, fallback nếu lỗi
-      let stream;
-      let lastErr;
-      const constraints = [
+      let stream, lastCamErr;
+      for (const c of [
         { video: { facingMode: { ideal: 'user' }, width: { ideal: 640 }, height: { ideal: 480 } } },
         { video: { facingMode: 'user' } },
         { video: true },
-      ];
-      for (const c of constraints) {
+      ]) {
         try { stream = await navigator.mediaDevices.getUserMedia(c); break; }
-        catch (e) { lastErr = e; }
+        catch (e) { lastCamErr = e; }
       }
-      if (!stream) throw lastErr || new Error('camera_unavailable');
+      if (!stream) {
+        const e = lastCamErr;
+        setFaceStep('error');
+        setFaceMsg(
+          e?.name === 'NotAllowedError' || e?.name === 'PermissionDeniedError'
+            ? 'Bạn cần cho phép truy cập camera. Vào Cài đặt > Safari > Camera và cấp quyền.'
+            : e?.name === 'NotFoundError'
+            ? 'Không tìm thấy camera trên thiết bị.'
+            : e?.name === 'NotReadableError'
+            ? 'Camera đang được ứng dụng khác sử dụng. Đóng các app khác và thử lại.'
+            : `Không thể bật camera (${e?.name || 'unknown'}). Vui lòng thử lại.`
+        );
+        return;
+      }
       streamRef.current = stream;
       setFaceStep('loadingModels');
       setFaceMsg('Đang tải model xác thực (lần đầu ~20s)...');
@@ -190,10 +202,23 @@ export default function RegisterPage() {
         if (videoRef.current) videoRef.current.srcObject = stream;
       }, 100);
 
-      // 2. Tải models song song với việc hiển thị camera
+      // 2. Chờ face-api.js script load xong (defer)
+      let waited = 0;
+      while (!window.faceapi && waited < 15000) {
+        await new Promise(r => setTimeout(r, 500));
+        waited += 500;
+      }
+      if (!window.faceapi) {
+        stream.getTracks().forEach(t => t.stop());
+        setFaceStep('error');
+        setFaceMsg('Không tải được thư viện nhận diện. Kiểm tra kết nối mạng và tải lại trang.');
+        return;
+      }
+
+      // 3. Tải models AI
       await loadFaceModels((msg) => setFaceMsg(msg));
 
-      // 3. Trích xuất descriptor từ ảnh thẻ SV
+      // 4. Trích xuất descriptor từ ảnh thẻ SV
       setFaceStep('verifyingId');
       setFaceMsg('Đang đọc khuôn mặt từ thẻ sinh viên...');
       const idDescriptor = await extractDescriptorFromBase64(studentIdImage);
@@ -205,26 +230,14 @@ export default function RegisterPage() {
       }
       idCardDescriptorRef.current = idDescriptor;
 
-      // 4. Sẵn sàng chụp
+      // 5. Sẵn sàng chụp
       setFaceStep('ready');
       setModelsReady(true);
       setFaceMsg('');
     } catch (err) {
-      console.error('Camera error:', err.name, err.message);
+      console.error('FaceEnroll error:', err.name, err.message);
       setFaceStep('error');
-      setFaceMsg(
-        err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError'
-          ? 'Bạn cần cho phép truy cập camera. Vào Cài đặt > Safari/Chrome > Camera và cấp quyền.'
-          : err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError'
-          ? 'Không tìm thấy camera trên thiết bị.'
-          : err.name === 'NotReadableError' || err.name === 'TrackStartError'
-          ? 'Camera đang được ứng dụng khác sử dụng. Đóng các app camera khác và thử lại.'
-          : err.name === 'OverconstrainedError'
-          ? 'Camera không hỗ trợ cấu hình yêu cầu. Thử lại.'
-          : err.name === 'APIUnavailableError'
-          ? 'Trình duyệt không hỗ trợ camera. Vui lòng mở bằng Safari hoặc Chrome.'
-          : `Lỗi camera: ${err.name || err.message}. Vui lòng thử lại.`
-      );
+      setFaceMsg(`Lỗi: ${err.message || err.name}. Vui lòng thử lại.`);
     }
   };
 
@@ -549,6 +562,7 @@ export default function RegisterPage() {
                 <AlertCircle size={28} className="text-red-400 mx-auto mb-2"/>
                 <p className="text-red-600 text-sm">{faceMsg}</p>
                 <button onClick={startFaceEnroll} className="mt-3 bg-red-500 text-white px-4 py-2 rounded-lg text-sm">Thử lại</button>
+                <p className="text-gray-400 text-xs mt-3">Hoặc bỏ qua và thêm khuôn mặt sau trong hồ sơ</p>
               </div>
             )}
 
