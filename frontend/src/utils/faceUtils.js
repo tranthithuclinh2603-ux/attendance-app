@@ -28,7 +28,7 @@ export async function extractDescriptorFromBase64(base64) {
     const img = new Image();
     img.onload = async () => {
       // Resize xuống tối đa 400px trước khi detect để tăng tốc
-      const MAX = 400;
+      const MAX = 1000;
       const scale = Math.min(1, MAX / Math.max(img.width, img.height));
       const canvas = document.createElement('canvas');
       canvas.width = Math.round(img.width * scale);
