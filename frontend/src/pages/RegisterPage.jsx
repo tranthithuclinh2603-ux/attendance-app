@@ -166,17 +166,23 @@ export default function RegisterPage() {
     setVerifyError('');
     idCardDescriptorRef.current = null;
     try {
-      // 1. Bật camera — thử từng constraint, fallback nếu lỗi
+      // 1. Kiểm tra API có khả dụng không
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw Object.assign(new Error('api_unavailable'), { name: 'APIUnavailableError' });
+      }
+      // Bật camera — thử từng constraint, fallback nếu lỗi
       let stream;
+      let lastErr;
       const constraints = [
         { video: { facingMode: { ideal: 'user' }, width: { ideal: 640 }, height: { ideal: 480 } } },
         { video: { facingMode: 'user' } },
         { video: true },
       ];
       for (const c of constraints) {
-        try { stream = await navigator.mediaDevices.getUserMedia(c); break; } catch (_) {}
+        try { stream = await navigator.mediaDevices.getUserMedia(c); break; }
+        catch (e) { lastErr = e; }
       }
-      if (!stream) throw new Error('camera_unavailable');
+      if (!stream) throw lastErr || new Error('camera_unavailable');
       streamRef.current = stream;
       setFaceStep('loadingModels');
       setFaceMsg('Đang tải model xác thực (lần đầu ~20s)...');
@@ -204,15 +210,20 @@ export default function RegisterPage() {
       setModelsReady(true);
       setFaceMsg('');
     } catch (err) {
+      console.error('Camera error:', err.name, err.message);
       setFaceStep('error');
       setFaceMsg(
         err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError'
-          ? 'Bạn cần cho phép truy cập camera. Vào cài đặt trình duyệt và cấp quyền camera.'
+          ? 'Bạn cần cho phép truy cập camera. Vào Cài đặt > Safari/Chrome > Camera và cấp quyền.'
           : err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError'
           ? 'Không tìm thấy camera trên thiết bị.'
-          : err.name === 'NotReadableError'
-          ? 'Camera đang được ứng dụng khác sử dụng. Đóng các app khác và thử lại.'
-          : 'Không thể khởi động camera. Vui lòng thử lại.'
+          : err.name === 'NotReadableError' || err.name === 'TrackStartError'
+          ? 'Camera đang được ứng dụng khác sử dụng. Đóng các app camera khác và thử lại.'
+          : err.name === 'OverconstrainedError'
+          ? 'Camera không hỗ trợ cấu hình yêu cầu. Thử lại.'
+          : err.name === 'APIUnavailableError'
+          ? 'Trình duyệt không hỗ trợ camera. Vui lòng mở bằng Safari hoặc Chrome.'
+          : `Lỗi camera: ${err.name || err.message}. Vui lòng thử lại.`
       );
     }
   };
