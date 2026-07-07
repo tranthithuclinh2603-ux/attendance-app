@@ -21,7 +21,7 @@ export default function FaceEnrollModal({ onClose, onEnrolled }) {
         if (!faceapi) { setStep('error'); setMsg('face-api.js chưa được tải. Vui lòng tải lại trang.'); return; }
 
         setMsg('Đang tải model nhận diện khuôn mặt...');
-        const MODEL_URL = 'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights';
+        const MODEL_URL = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights';
         await Promise.all([
           faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
           faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODEL_URL),
